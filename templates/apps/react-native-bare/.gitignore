@@ -1,0 +1,15 @@
+# React Native specific files and Flow type definitions
+*.flow
+*.js.flow
+flow-typed/
+.flowconfig
+
+# React Native build directories
+android/
+ios/
+.expo/
+web-build/
+
+# Webpack build output
+dist/
+build/

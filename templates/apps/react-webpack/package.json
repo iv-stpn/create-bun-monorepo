@@ -1,0 +1,30 @@
+{
+	"name": "react-webpack",
+	"version": "1.0.0",
+	"private": true,
+	"scripts": {
+		"dev": "webpack serve --mode development",
+		"build": "webpack --mode production",
+		"typecheck": "tsc --noEmit --pretty"
+	},
+	"dependencies": {
+		"react": "^19",
+		"react-dom": "^19"
+	},
+	"devDependencies": {
+		"@types/react": "^19",
+		"@types/react-dom": "^19",
+		"@babel/core": "^7",
+		"@babel/preset-env": "^7",
+		"@babel/preset-react": "^7",
+		"@babel/preset-typescript": "^7",
+		"babel-loader": "^10",
+		"css-loader": "^7",
+		"html-webpack-plugin": "^5.6",
+		"style-loader": "^4",
+		"typescript": "^5",
+		"webpack": "^5.100",
+		"webpack-cli": "^6",
+		"webpack-dev-server": "^5"
+	}
+}

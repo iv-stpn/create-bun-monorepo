@@ -1,0 +1,49 @@
+{
+	"name": "react-native-bare",
+	"version": "1.0.0",
+	"private": true,
+	"scripts": {
+		"android": "react-native run-android",
+		"ios": "react-native run-ios",
+		"web:dev": "webpack serve --mode development --config webpack.config.web.js",
+		"web:build": "webpack --mode production --config webpack.config.web.js",
+		"lint": "eslint . --ext .js,.jsx,.ts,.tsx",
+		"start": "react-native start",
+		"test": "jest",
+		"build": "echo 'React Native projects bundle at runtime. Use react-native run-android/ios to build and run.'",
+		"typecheck": "tsc --noEmit --pretty"
+	},
+	"dependencies": {
+		"react": "^19",
+		"react-dom": "^19",
+		"react-native": "^0.80",
+		"react-native-web": "^0.20",
+		"@react-navigation/native": "^7",
+		"@react-navigation/native-stack": "^7",
+		"react-native-screens": "^4",
+		"react-native-safe-area-context": "^5"
+	},
+	"devDependencies": {
+		"@babel/core": "^7",
+		"@babel/preset-env": "^7",
+		"@babel/runtime": "^7",
+		"@react-native/babel-preset": "^0.80",
+		"@react-native/metro-config": "^0.80",
+		"@react-native/typescript-config": "^0.80",
+		"@types/react": "^19",
+		"@types/react-native": "latest",
+		"@types/react-test-renderer": "^19",
+		"babel-jest": "^30",
+		"metro-react-native-babel-preset": "^0.77",
+		"react-test-renderer": "^19",
+		"typescript": "^5",
+		"webpack": "^5",
+		"webpack-cli": "^5",
+		"webpack-dev-server": "^5",
+		"babel-loader": "^9",
+		"html-webpack-plugin": "^5"
+	},
+	"engines": {
+		"node": ">=20"
+	}
+}

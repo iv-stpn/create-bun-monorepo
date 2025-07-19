@@ -1,0 +1,54 @@
+{
+	"name": "create-bun-monorepo",
+	"version": "1.0.0",
+	"description": "A CLI tool to scaffold Bun monorepos with apps and packages",
+	"main": "dist/index.js",
+	"type": "module",
+	"bin": {
+		"bun-scaffold": "./dist/index.js"
+	},
+	"scripts": {
+		"build": "bun build src/index.ts --outdir dist --target node --minify",
+		"dev": "bun run src/index.ts",
+		"typecheck": "tsc --noEmit --pretty",
+		"lint": "biome check .",
+		"lint:fix": "biome check --write .",
+		"format": "biome format --write .",
+		"test": "bun run build && ./tests/test-runner.sh",
+		"test:full": "bun run build && ./tests/test-runner.sh --mode=full",
+		"test:playwright": "bun run build && ./tests/test-runner.sh --playwright",
+		"changeset": "changeset",
+		"changeset:version": "changeset version",
+		"changeset:publish": "changeset publish",
+		"release": "bun run build && bun run changeset:publish",
+		"release:auto": "bun run scripts/release.ts --auto-changeset",
+		"prepublishOnly": "bun run build && chmod +x dist/index.js"
+	},
+	"keywords": [
+		"bun",
+		"monorepo",
+		"scaffolding",
+		"cli",
+		"typescript",
+		"javascript"
+	],
+	"author": "iv-stpn",
+	"license": "MIT",
+	"dependencies": {
+		"prompts": "^2.4.2",
+		"chalk": "^5.3.0"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "2.1.1",
+		"@changesets/changelog-github": "^0.5.1",
+		"@changesets/cli": "^2.29.5",
+		"@playwright/test": "^1.54.1",
+		"@types/node": "^20",
+		"@types/prompts": "2.4.9",
+		"bun-types": "latest",
+		"typescript": "^5"
+	},
+	"files": [
+		"dist"
+	]
+}

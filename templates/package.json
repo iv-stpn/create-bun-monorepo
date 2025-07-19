@@ -1,0 +1,19 @@
+{
+	"name": "templates",
+	"version": "1.0.0",
+	"description": "Templates for monorepo scaffolding",
+	"scripts": {
+		"typecheck": "tsc --noEmit --pretty"
+	},
+	"workspaces": [
+		"apps/*",
+		"packages/*"
+	],
+	"author": "iv-stpn",
+	"license": "MIT",
+	"devDependencies": {
+		"@types/node": "^20",
+		"bun-types": "latest",
+		"typescript": "^5"
+	}
+}

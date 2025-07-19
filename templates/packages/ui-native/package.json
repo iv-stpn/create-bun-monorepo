@@ -1,0 +1,21 @@
+{
+	"name": "ui-native",
+	"version": "1.0.0",
+	"private": true,
+	"main": "src/index.ts",
+	"scripts": {
+		"build": "tsc",
+		"dev": "tsc --watch",
+		"typecheck": "tsc --noEmit"
+	},
+	"dependencies": {
+		"react": "^19",
+		"react-native": "^0.80"
+	},
+	"devDependencies": {
+		"@types/react": "^19",
+		"@types/react-native": "latest",
+		"typescript": "^5",
+		"@react-native/typescript-config": "^0.80.0"
+	}
+}

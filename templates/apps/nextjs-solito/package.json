@@ -1,0 +1,35 @@
+{
+	"name": "nextjs-solito",
+	"version": "1.0.0",
+	"private": true,
+	"scripts": {
+		"dev": "next dev -p 3003",
+		"build": "next build",
+		"start": "next start",
+		"lint": "next lint",
+		"typecheck": "tsc --noEmit --pretty"
+	},
+	"dependencies": {
+		"next": "^15",
+		"react": "^19",
+		"react-dom": "^19",
+		"react-native-web": "^0.19",
+		"solito": "^4",
+		"nativewind": "^4",
+		"@react-navigation/core": "^6",
+		"@react-navigation/native": "^6",
+		"react-native-reanimated": "^3",
+		"react-native-gesture-handler": "^2",
+		"react-native-screens": "^3",
+		"react-native-safe-area-context": "^4"
+	},
+	"devDependencies": {
+		"@types/node": "^20",
+		"@types/react": "^19",
+		"@types/react-dom": "^19",
+		"autoprefixer": "^10",
+		"postcss": "^8",
+		"tailwindcss": "^3",
+		"typescript": "^5"
+	}
+}
