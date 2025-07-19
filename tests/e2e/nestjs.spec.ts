@@ -6,7 +6,7 @@ test.describe("NestJS Backend E2E", () => {
 		expect(response.ok()).toBeTruthy();
 
 		const content = await response.text();
-		expect(content).toMatch(/(Hello|NestJS|World|API|Welcome)/i);
+		expect(content).toContain("Hello from NestJS!");
 	});
 
 	test("should have proper JSON response structure", async ({ request }) => {
@@ -33,16 +33,38 @@ test.describe("NestJS Backend E2E", () => {
 	});
 
 	test("should respond to ORM test endpoint when ORM is configured", async ({ request }) => {
-		try {
-			const response = await request.get("http://localhost:3101/orm-test");
-			if (response.ok()) {
-				const data = await response.json();
-				expect(data).toHaveProperty("message", "orm-test-endpoint");
-				expect(data).toHaveProperty("orm");
+		if (process.env.ORM) {
+			try {
+				const response = await request.get("http://localhost:3101/orm-test");
+				if (response.ok()) {
+					const data = await response.json();
+					expect(data).toHaveProperty("message", "orm-test-endpoint");
+					expect(data).toHaveProperty("orm");
+					expect(data.orm).toBe(process.env.ORM);
+				}
+			} catch (_e) {
+				// ORM endpoint might not be injected in all scenarios
+				console.log("ORM test endpoint not available, skipping check");
 			}
-		} catch (e) {
-			// ORM endpoint might not be injected in all scenarios
-			console.log("ORM test endpoint not available, skipping check");
+		} else {
+			console.log("No ORM configured, skipping ORM endpoint test");
+		}
+	});
+
+	test("should handle API endpoints when ORM is configured", async ({ request }) => {
+		if (process.env.ORM) {
+			try {
+				// Test user endpoints that are injected with ORM
+				const response = await request.get("http://localhost:3101/api/users");
+				if (response.ok()) {
+					const data = await response.json();
+					expect(Array.isArray(data)).toBe(true);
+				}
+			} catch (_e) {
+				console.log("ORM user endpoints not available, might not be injected");
+			}
+		} else {
+			console.log("No ORM configured, skipping API endpoints test");
 		}
 	});
 
@@ -82,7 +104,7 @@ test.describe("NestJS Backend E2E", () => {
 			});
 			// Should either accept or reject gracefully (not crash)
 			expect([200, 400, 404, 405]).toContain(badResponse.status());
-		} catch (e) {
+		} catch (_e) {
 			// Network errors are acceptable for malformed requests
 			console.log("Request validation test completed (network error expected)");
 		}
@@ -94,7 +116,7 @@ test.describe("NestJS Backend E2E", () => {
 			const response = await request.get("http://localhost:3101/trigger-error-endpoint");
 			// Should not crash server, should return structured error
 			expect([404, 500]).toContain(response.status());
-		} catch (e) {
+		} catch (_e) {
 			// 404 for non-existent endpoint is expected
 			console.log("Error handling test completed");
 		}

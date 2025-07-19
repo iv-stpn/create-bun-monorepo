@@ -1,9 +1,9 @@
 import { expect, test } from "@playwright/test";
 
-// Regular expressions for performance optimization
+const VIEWPORT_WIDTH_DEVICE = /width=device-width/;
+
 const REACT_VITE_CONTENT = /(React|Vite|logo|App)/i;
 const REACT_VITE_BASIC = /(React|Vite|App)/i;
-const VIEWPORT_WIDTH_DEVICE = /width=device-width/;
 
 test.describe("React Vite Template E2E", () => {
 	test("should load React Vite app with basic content", async ({ page }) => {

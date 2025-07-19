@@ -47,7 +47,8 @@ test.describe("React Native Expo Web E2E", () => {
 		const rnWebSetup = await page.evaluate(() => {
 			// Check for React Native Web CSS classes or styles
 			const body = document.body;
-			const hasRNStyles = body.className.includes("rn-") || 
+			const hasRNStyles =
+				body.className.includes("rn-") ||
 				Array.from(document.styleSheets).some((sheet) => {
 					try {
 						const rules = Array.from(sheet.cssRules || []);
@@ -90,7 +91,7 @@ test.describe("React Native Expo Web E2E", () => {
 
 		// Look for touchable elements (React Native style)
 		const touchableElements = page.locator(
-			'[role="button"], button, [data-testid*="button"], [testid*="button"], [aria-label*="button"]'
+			'[role="button"], button, [data-testid*="button"], [testid*="button"], [aria-label*="button"]',
 		);
 
 		if ((await touchableElements.count()) > 0) {
@@ -114,8 +115,7 @@ test.describe("React Native Expo Web E2E", () => {
 
 		// Check for Expo-specific web features or configuration
 		const expoWebFeatures = await page.evaluate(() => {
-			return typeof window !== "undefined" && 
-				((window as WindowExpo).expo || (window as WindowExpo).__EXPO_WEB__);
+			return typeof window !== "undefined" && ((window as WindowExpo).expo || (window as WindowExpo).__EXPO_WEB__);
 		});
 
 		// This is optional since Expo web features might not always be detectable
@@ -125,8 +125,7 @@ test.describe("React Native Expo Web E2E", () => {
 
 		// Check that hot reloading works (development feature)
 		const hotReload = await page.evaluate(() => {
-			return typeof window !== "undefined" && 
-				((window as WindowExpo).__METRO__ || (window as WindowExpo).module?.hot);
+			return typeof window !== "undefined" && ((window as WindowExpo).__METRO__ || (window as WindowExpo).module?.hot);
 		});
 
 		// This is also optional
@@ -140,16 +139,16 @@ test.describe("React Native Expo Web E2E", () => {
 		await page.waitForLoadState("networkidle");
 
 		// Check for ARIA labels and accessibility attributes (React Native Web should handle this)
-		const accessibleElements = page.locator('[aria-label], [role], [aria-describedby]');
-		
+		const accessibleElements = page.locator("[aria-label], [role], [aria-describedby]");
+
 		if ((await accessibleElements.count()) > 0) {
 			await expect(accessibleElements.first()).toBeVisible();
 		}
 
 		// Test keyboard navigation
-		await page.keyboard.press('Tab');
-		const focusedElement = await page.locator(':focus');
-		
+		await page.keyboard.press("Tab");
+		const focusedElement = await page.locator(":focus");
+
 		if ((await focusedElement.count()) > 0) {
 			await expect(focusedElement).toBeVisible();
 		}
