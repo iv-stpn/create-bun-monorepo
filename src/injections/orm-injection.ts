@@ -1,4 +1,4 @@
-import { readFile, writeFile, access } from "node:fs/promises";
+import { access, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
 import type { OrmConfig } from "../types";
@@ -14,7 +14,7 @@ const HONO_EXPORT_REGEX = /export default/;
  */
 export async function addOrmEndpoints(appPath: string, framework: string, orm: OrmConfig): Promise<void> {
 	const indexPath = join(appPath, "src", "index.ts");
-	
+
 	// Check if the index.ts file exists before trying to read it
 	try {
 		await access(indexPath);
@@ -22,7 +22,7 @@ export async function addOrmEndpoints(appPath: string, framework: string, orm: O
 		// File doesn't exist - this is expected for frameworks like Next.js that don't have src/index.ts
 		return;
 	}
-	
+
 	const indexContent = await readFile(indexPath, "utf-8");
 
 	let updatedContent: string;
