@@ -21,10 +21,12 @@ A CLI tool to quickly scaffold Bun monorepos with apps and packages.
 - **React Webpack**: Traditional React setup with Webpack
 - **Next.js**: Full-stack React framework
 - **Next.js + Solito**: Universal React apps (web + mobile)
+- **Remix**: Full-stack React framework with nested routing
 - **React Native (Expo)**: Mobile development with Expo
 - **React Native (Bare)**: Bare React Native setup
 - **Express**: Node.js backend with Express
 - **Hono**: Modern web framework for the edge
+- **NestJS**: Enterprise Node.js framework with TypeScript
 
 ### Packages
 - **UI Components**: Shared React components
