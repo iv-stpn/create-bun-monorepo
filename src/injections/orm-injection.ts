@@ -1,4 +1,4 @@
-import { readFile, writeFile } from "node:fs/promises";
+import { readFile, writeFile, access } from "node:fs/promises";
 import { join } from "node:path";
 
 import type { OrmConfig } from "../types";
@@ -14,6 +14,15 @@ const HONO_EXPORT_REGEX = /export default/;
  */
 export async function addOrmEndpoints(appPath: string, framework: string, orm: OrmConfig): Promise<void> {
 	const indexPath = join(appPath, "src", "index.ts");
+	
+	// Check if the index.ts file exists before trying to read it
+	try {
+		await access(indexPath);
+	} catch {
+		// File doesn't exist - this is expected for frameworks like Next.js that don't have src/index.ts
+		return;
+	}
+	
 	const indexContent = await readFile(indexPath, "utf-8");
 
 	let updatedContent: string;
@@ -36,18 +45,22 @@ export async function addOrmEndpoints(appPath: string, framework: string, orm: O
 function addExpressOrmEndpoints(content: string, orm: OrmConfig): string {
 	const importStatement =
 		orm.type === "drizzle"
-			? `import { db } from '../../../src/lib/db';\nimport { users, type User, type NewUser } from '../../../src/lib/schema';`
-			: `import { db } from '../../../src/lib/db';`;
+			? `import { eq } from "drizzle-orm";\nimport { db } from "../../../src/lib/db";\nimport { type NewUser, users } from "../../../src/lib/schema";`
+			: `import { db } from "../../../src/lib/db";`;
 
 	const userRoutes =
 		orm.type === "drizzle"
-			? `
+			? `// ORM Test endpoint
+app.get("/orm-test", (_req, res) => {
+	res.json({ message: "orm-test-endpoint", orm: "drizzle" });
+});
+
 // User routes
 app.get("/api/users", async (_req, res) => {
 	try {
 		const allUsers = await db.select().from(users);
 		res.json(allUsers);
-	} catch (error) {
+	} catch (_error) {
 		res.status(500).json({ error: "Failed to fetch users" });
 	}
 });
@@ -57,7 +70,7 @@ app.post("/api/users", async (req, res) => {
 		const newUser: NewUser = req.body;
 		const user = await db.insert(users).values(newUser).returning();
 		res.status(201).json(user[0]);
-	} catch (error) {
+	} catch (_error) {
 		res.status(500).json({ error: "Failed to create user" });
 	}
 });
@@ -69,17 +82,21 @@ app.get("/api/users/:id", async (req, res) => {
 			return res.status(404).json({ error: "User not found" });
 		}
 		res.json(user[0]);
-	} catch (error) {
+	} catch (_error) {
 		res.status(500).json({ error: "Failed to fetch user" });
 	}
 });`
-			: `
+			: `// ORM Test endpoint
+app.get("/orm-test", (_req, res) => {
+	res.json({ message: "orm-test-endpoint", orm: "prisma" });
+});
+
 // User routes
 app.get("/api/users", async (_req, res) => {
 	try {
 		const users = await db.user.findMany();
 		res.json(users);
-	} catch (error) {
+	} catch (_error) {
 		res.status(500).json({ error: "Failed to fetch users" });
 	}
 });
@@ -88,7 +105,7 @@ app.post("/api/users", async (req, res) => {
 	try {
 		const user = await db.user.create({ data: req.body });
 		res.status(201).json(user);
-	} catch (error) {
+	} catch (_error) {
 		res.status(500).json({ error: "Failed to create user" });
 	}
 });
@@ -100,23 +117,20 @@ app.get("/api/users/:id", async (req, res) => {
 			return res.status(404).json({ error: "User not found" });
 		}
 		res.json(user);
-	} catch (error) {
+	} catch (_error) {
 		res.status(500).json({ error: "Failed to fetch user" });
 	}
 });`;
 
-	const eqImport = orm.type === "drizzle" ? "import { eq } from 'drizzle-orm';\n" : "";
-
-	// Add imports at the top
+	// Add imports at the top (eq import is already included in importStatement for drizzle)
 	const withImports = content
 		.replace(IMPORT_LINE_REGEX, (match) => match)
-		.replace(LAST_IMPORT_REGEX, `$1${eqImport}${importStatement}\n\n`);
+		.replace(LAST_IMPORT_REGEX, `$1${importStatement}\n\n`);
 
 	// Add routes before the server start
 	return withImports.replace(
 		EXPRESS_LISTEN_REGEX,
 		`${userRoutes}
-
 app.listen(`,
 	);
 }
@@ -127,18 +141,22 @@ app.listen(`,
 function addHonoOrmEndpoints(content: string, orm: OrmConfig): string {
 	const importStatement =
 		orm.type === "drizzle"
-			? `import { db } from '../../../src/lib/db';\nimport { users, type User, type NewUser } from '../../../src/lib/schema';`
-			: `import { db } from '../../../src/lib/db';`;
+			? `import { eq } from "drizzle-orm";\nimport { db } from "../../../src/lib/db";\nimport { type NewUser, users } from "../../../src/lib/schema";`
+			: `import { db } from "../../../src/lib/db";`;
 
 	const userRoutes =
 		orm.type === "drizzle"
-			? `
+			? `// ORM Test endpoint
+app.get("/orm-test", (c) => {
+	return c.json({ message: "orm-test-endpoint", orm: "drizzle" });
+});
+
 // User routes
 app.get("/api/users", async (c) => {
 	try {
 		const allUsers = await db.select().from(users);
 		return c.json(allUsers);
-	} catch (error) {
+	} catch (_error) {
 		return c.json({ error: "Failed to fetch users" }, 500);
 	}
 });
@@ -148,7 +166,7 @@ app.post("/api/users", async (c) => {
 		const newUser: NewUser = await c.req.json();
 		const user = await db.insert(users).values(newUser).returning();
 		return c.json(user[0], 201);
-	} catch (error) {
+	} catch (_error) {
 		return c.json({ error: "Failed to create user" }, 500);
 	}
 });
@@ -161,17 +179,21 @@ app.get("/api/users/:id", async (c) => {
 			return c.json({ error: "User not found" }, 404);
 		}
 		return c.json(user[0]);
-	} catch (error) {
+	} catch (_error) {
 		return c.json({ error: "Failed to fetch user" }, 500);
 	}
 });`
-			: `
+			: `// ORM Test endpoint
+app.get("/orm-test", (c) => {
+	return c.json({ message: "orm-test-endpoint", orm: "prisma" });
+});
+
 // User routes
 app.get("/api/users", async (c) => {
 	try {
 		const users = await db.user.findMany();
 		return c.json(users);
-	} catch (error) {
+	} catch (_error) {
 		return c.json({ error: "Failed to fetch users" }, 500);
 	}
 });
@@ -181,7 +203,7 @@ app.post("/api/users", async (c) => {
 		const userData = await c.req.json();
 		const user = await db.user.create({ data: userData });
 		return c.json(user, 201);
-	} catch (error) {
+	} catch (_error) {
 		return c.json({ error: "Failed to create user" }, 500);
 	}
 });
@@ -194,17 +216,15 @@ app.get("/api/users/:id", async (c) => {
 			return c.json({ error: "User not found" }, 404);
 		}
 		return c.json(user);
-	} catch (error) {
+	} catch (_error) {
 		return c.json({ error: "Failed to fetch user" }, 500);
 	}
 });`;
 
-	const eqImport = orm.type === "drizzle" ? "import { eq } from 'drizzle-orm';\n" : "";
-
-	// Add imports at the top
+	// Add imports at the top (eq import is already included in importStatement for drizzle)
 	const withImports = content
 		.replace(IMPORT_LINE_REGEX, (match) => match)
-		.replace(LAST_IMPORT_REGEX, `$1${eqImport}${importStatement}\n\n`);
+		.replace(LAST_IMPORT_REGEX, `$1${importStatement}\n\n`);
 
 	// Add routes before the export default
 	return withImports.replace(

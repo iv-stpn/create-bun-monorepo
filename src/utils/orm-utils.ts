@@ -40,7 +40,7 @@ export function getOrmDependencies(ormConfig: OrmConfig): {
 		switch (database) {
 			case "postgresql":
 				dependencies.postgres = "^3.4.0";
-				dependencies["@types/postgres"] = "^3.0.0";
+				// Note: postgres package includes its own TypeScript definitions
 				break;
 			case "mysql":
 				dependencies.mysql2 = "^3.6.0";
@@ -159,29 +159,37 @@ async function createPrismaSetup(rootPath: string, database: "postgresql" | "mys
 function getDrizzleDbContent(database: "postgresql" | "mysql" | "sqlite"): string {
 	switch (database) {
 		case "postgresql":
-			return `import { drizzle } from 'drizzle-orm/postgres-js';
-import postgres from 'postgres';
-import { env } from './env';
+			return `import { drizzle } from "drizzle-orm/postgres-js";
+import postgres from "postgres";
 
-const client = postgres(env.DATABASE_URL);
+const databaseUrl = process.env.DATABASE_URL;
+if (!databaseUrl) {
+	throw new Error("DATABASE_URL environment variable is required");
+}
+
+const client = postgres(databaseUrl);
 export const db = drizzle(client);
 `;
 
 		case "mysql":
-			return `import { drizzle } from 'drizzle-orm/mysql2';
-import mysql from 'mysql2/promise';
-import { env } from './env';
+			return `import { drizzle } from "drizzle-orm/mysql2";
+import mysql from "mysql2/promise";
 
-const connection = await mysql.createConnection(env.DATABASE_URL);
+const databaseUrl = process.env.DATABASE_URL;
+if (!databaseUrl) {
+	throw new Error("DATABASE_URL environment variable is required");
+}
+
+const connection = await mysql.createConnection(databaseUrl);
 export const db = drizzle(connection);
 `;
 
 		case "sqlite":
-			return `import { drizzle } from 'drizzle-orm/better-sqlite3';
-import Database from 'better-sqlite3';
-import { env } from './env';
+			return `import { drizzle } from "drizzle-orm/better-sqlite3";
+import Database from "better-sqlite3";
 
-const sqlite = new Database(env.DATABASE_URL);
+const dbPath = process.env.DATABASE_URL || "./local.db";
+const sqlite = new Database(dbPath);
 export const db = drizzle(sqlite);
 `;
 	}
@@ -193,33 +201,33 @@ export const db = drizzle(sqlite);
 function getDrizzleSchemaContent(database: "postgresql" | "mysql" | "sqlite"): string {
 	const imports =
 		database === "postgresql"
-			? "import { pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';"
+			? 'import { pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";'
 			: database === "mysql"
-				? "import { mysqlTable, text, timestamp, varchar } from 'drizzle-orm/mysql-core';"
-				: "import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';";
+				? 'import { mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";'
+				: 'import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";';
 
 	const tableFunction = database === "postgresql" ? "pgTable" : database === "mysql" ? "mysqlTable" : "sqliteTable";
 
 	const idField =
 		database === "postgresql"
-			? "id: uuid('id').defaultRandom().primaryKey(),"
+			? 'id: uuid("id").defaultRandom().primaryKey(),'
 			: database === "mysql"
-				? "id: varchar('id', { length: 36 }).primaryKey(),"
-				: "id: integer('id', { mode: 'number' }).primaryKey({ autoIncrement: true }),";
+				? 'id: varchar("id", { length: 36 }).primaryKey(),'
+				: 'id: integer("id", { mode: "number" }).primaryKey({ autoIncrement: true }),';
 
 	const timestampFields =
 		database === "sqlite"
-			? `createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
-	updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),`
-			: `createdAt: timestamp('created_at').defaultNow().notNull(),
-	updatedAt: timestamp('updated_at').defaultNow().notNull(),`;
+			? `createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+	updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),`
+			: `createdAt: timestamp("created_at").defaultNow().notNull(),
+	updatedAt: timestamp("updated_at").defaultNow().notNull(),`;
 
 	return `${imports}
 
-export const users = ${tableFunction}('users', {
+export const users = ${tableFunction}("users", {
 	${idField}
-	name: text('name').notNull(),
-	email: text('email').notNull().unique(),
+	name: text("name").notNull(),
+	email: text("email").notNull().unique(),
 	${timestampFields}
 });
 
@@ -234,14 +242,14 @@ export type NewUser = typeof users.$inferInsert;
 function getDrizzleConfigContent(database: "postgresql" | "mysql" | "sqlite"): string {
 	const dialect = database === "postgresql" ? "postgresql" : database;
 
-	return `import type { Config } from 'drizzle-kit';
+	return `import type { Config } from "drizzle-kit";
 
 export default {
-	schema: './src/lib/schema.ts',
-	out: './drizzle',
-	dialect: '${dialect}',
+	schema: "./src/lib/schema.ts",
+	out: "./drizzle",
+	dialect: "${dialect}",
 	dbCredentials: {
-		${database === "sqlite" ? "url: process.env.DATABASE_URL || './local.db'," : "url: process.env.DATABASE_URL!,"}
+		${database === "sqlite" ? 'url: process.env.DATABASE_URL || "./local.db",' : "url: process.env.DATABASE_URL!,"}
 	},
 } satisfies Config;
 `;
@@ -253,9 +261,9 @@ export default {
 function getDrizzleEnvContent(database: "postgresql" | "mysql" | "sqlite"): string {
 	const exampleUrl =
 		database === "postgresql"
-			? "postgresql://username:password@localhost:5432/database"
+			? "postgresql://postgres:postgres@localhost:5432/myapp_dev"
 			: database === "mysql"
-				? "mysql://username:password@localhost:3306/database"
+				? "mysql://root:root@localhost:3306/myapp_dev"
 				: "./local.db";
 
 	return `# Database
@@ -267,7 +275,7 @@ DATABASE_URL="${exampleUrl}"
  * Generate Prisma client content
  */
 function getPrismaClientContent(): string {
-	return `import { PrismaClient } from '@prisma/client';
+	return `import { PrismaClient } from "@prisma/client";
 
 const globalForPrisma = globalThis as unknown as {
 	prisma: PrismaClient | undefined;
@@ -275,7 +283,7 @@ const globalForPrisma = globalThis as unknown as {
 
 export const db = globalForPrisma.prisma ?? new PrismaClient();
 
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = db;
+if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = db;
 `;
 }
 
@@ -313,18 +321,18 @@ model User {
  * Generate Prisma seed content
  */
 function getPrismaSeedContent(): string {
-	return `import { db } from './db';
+	return `import { db } from "./db";
 
 async function main() {
 	// Create sample user
 	const user = await db.user.create({
 		data: {
-			name: 'John Doe',
-			email: 'john@example.com',
+			name: "John Doe",
+			email: "john@example.com",
 		},
 	});
 
-	console.log('Created user:', user);
+	console.log("Created user:", user);
 }
 
 main()
@@ -344,9 +352,9 @@ main()
 function getPrismaEnvContent(database: "postgresql" | "mysql" | "sqlite"): string {
 	const exampleUrl =
 		database === "postgresql"
-			? "postgresql://username:password@localhost:5432/database"
+			? "postgresql://postgres:postgres@localhost:5432/myapp_dev"
 			: database === "mysql"
-				? "mysql://username:password@localhost:3306/database"
+				? "mysql://root:root@localhost:3306/myapp_dev"
 				: "file:./dev.db";
 
 	return `# Database

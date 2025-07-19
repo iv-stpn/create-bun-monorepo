@@ -49,6 +49,16 @@ log_playwright() {
 
 # Cleanup function
 cleanup_test_environment() {
+    # Stop Docker services for any running projects
+    if [ -n "$CURRENT_PROJECT_DIR" ] && [ -d "$CURRENT_PROJECT_DIR" ]; then
+        stop_docker_services "$CURRENT_PROJECT_DIR"
+    fi
+    
+    # Global cleanup of dev-postgres containers
+    log_info "Cleaning up any existing Docker containers..."
+    docker rm -f dev-postgres >/dev/null 2>&1 || true
+    docker network rm dev-network >/dev/null 2>&1 || true
+    
     if [ -n "$TEST_OUTPUT_DIR" ] && [ -d "$TEST_OUTPUT_DIR" ]; then
         log_info "Cleaning up test environment..."
         rm -rf "$TEST_OUTPUT_DIR" 2>/dev/null || true
@@ -66,6 +76,84 @@ cleanup_test_environment() {
     pkill -f "next dev" 2>/dev/null || true
     pkill -f "vite" 2>/dev/null || true
     pkill -f "expo" 2>/dev/null || true
+}
+
+# Docker Compose management for database
+start_docker_services() {
+    local project_dir="$1"
+    log_info "Starting Docker services for database..."
+    cd "$project_dir"
+    
+    # Check if Docker is available (try both docker compose and docker-compose)
+    if command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1; then
+        local compose_cmd="docker compose"
+    elif command -v docker-compose >/dev/null 2>&1; then
+        local compose_cmd="docker-compose"
+    else
+        log_error "Neither 'docker compose' nor 'docker-compose' is available. Please install Docker."
+        return 1
+    fi
+    
+    # Check if docker-compose.dev.yml exists in the project
+    if [ ! -f "docker-compose.dev.yml" ]; then
+        log_error "docker-compose.dev.yml not found in project directory"
+        return 1
+    fi
+    
+    # Clean up any existing containers first
+    log_info "Cleaning up any existing containers..."
+    $compose_cmd -f docker-compose.dev.yml down >/dev/null 2>&1 || true
+    
+    # Remove any orphaned containers with the same name
+    docker rm -f dev-postgres >/dev/null 2>&1 || true
+    
+    # Start PostgreSQL service using project's compose file
+    if ! $compose_cmd -f docker-compose.dev.yml up -d postgres 2>/dev/null; then
+        log_error "Failed to start PostgreSQL service with $compose_cmd"
+        # Try to show more detail for debugging
+        log_info "Attempting to start with verbose output..."
+        $compose_cmd -f docker-compose.dev.yml up -d postgres || return 1
+    fi
+    
+    # Wait for PostgreSQL to be ready
+    log_info "Waiting for PostgreSQL to be ready..."
+    local max_attempts=30
+    local attempt=1
+    
+    while [ $attempt -le $max_attempts ]; do
+        if $compose_cmd -f docker-compose.dev.yml exec -T postgres pg_isready -U postgres >/dev/null 2>&1; then
+            log_success "PostgreSQL is ready"
+            return 0
+        fi
+        
+        if [ $attempt -eq $max_attempts ]; then
+            log_error "PostgreSQL failed to start after $max_attempts attempts"
+            return 1
+        fi
+        
+        log_info "Waiting for PostgreSQL... (attempt $attempt/$max_attempts)"
+        sleep 2
+        attempt=$((attempt + 1))
+    done
+}
+
+stop_docker_services() {
+    local project_dir="$1"
+    if [ -n "$project_dir" ] && [ -d "$project_dir" ]; then
+        log_info "Stopping Docker services..."
+        cd "$project_dir"
+        
+        # Check if Docker is available (try both docker compose and docker-compose)
+        if command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1; then
+            local compose_cmd="docker compose"
+        elif command -v docker-compose >/dev/null 2>&1; then
+            local compose_cmd="docker-compose"
+        else
+            return 0  # If no compose available, nothing to stop
+        fi
+        
+        $compose_cmd -f docker-compose.dev.yml down >/dev/null 2>&1 || true
+    fi
 }
 
 # Test server response on specific port
@@ -117,13 +205,24 @@ create_test_project() {
     LINTING="biome" \
     APPS="$apps" \
     PACKAGES="$packages" \
-    ORM="$orm" \
+    ORM_TYPE="$orm" \
+    DATABASE="postgresql" \
     timeout 120 node "$CLI_PATH" > "/tmp/creation-$scenario_name.log" 2>&1
     
     if [ ! -d "$project_name" ]; then
         log_error "Failed to create project: $project_name" >&2
         cat "/tmp/creation-$scenario_name.log" >&2 || true
         return 1
+    fi
+    
+    # Set up environment file for ORM scenarios
+    if [ "$orm" = "prisma" ] || [ "$orm" = "drizzle" ]; then
+        cd "$project_name"
+        if [ -f ".env.example" ]; then
+            cp ".env.example" ".env"
+            log_info "Copied .env.example to .env for database connection" >&2
+        fi
+        cd "$TEST_OUTPUT_DIR"
     fi
     
     echo "$project_dir"
@@ -157,11 +256,24 @@ validate_code_quality() {
     # Run lint
     log_info "Running lint for $scenario_name..."
     if ! timeout 60 bun run lint > "/tmp/lint-$scenario_name.log" 2>&1; then
-        log_error "Lint failed for $scenario_name"
-        tail -10 "/tmp/lint-$scenario_name.log" || true
-        return 1
+        log_info "Lint failed, attempting to auto-fix with biome..."
+        if timeout 60 bunx biome check --write . > "/tmp/biome-fix-$scenario_name.log" 2>&1; then
+            log_info "Auto-fix completed, retrying lint..."
+            if timeout 60 bun run lint > "/tmp/lint-retry-$scenario_name.log" 2>&1; then
+                log_success "Lint passed after auto-fix for $scenario_name"
+            else
+                log_error "Lint failed after auto-fix for $scenario_name"
+                tail -10 "/tmp/lint-retry-$scenario_name.log" || true
+                return 1
+            fi
+        else
+            log_error "Auto-fix failed for $scenario_name"
+            tail -10 "/tmp/lint-$scenario_name.log" || true
+            return 1
+        fi
+    else
+        log_success "Lint passed for $scenario_name"
     fi
-    log_success "Lint passed for $scenario_name"
     
     # Build apps that support building
     log_info "Building apps for $scenario_name..."
@@ -228,6 +340,11 @@ run_e2e_tests() {
             local app_name=$(basename "$app_dir")
             local expected_port=$(get_app_port "$app_dir")
             
+            # Copy .env file to app directory for environment variable access
+            if [ -f "$project_dir/.env" ]; then
+                cp "$project_dir/.env" "$project_dir/$app_dir/"
+            fi
+            
             cd "$project_dir/$app_dir"
             
             log_info "Testing E2E for $app_name on port $expected_port..."
@@ -272,6 +389,11 @@ start_playwright_server() {
     local expected_port="$3"
     
     log_playwright "Starting server for $app_name on port $expected_port..."
+    
+    # Copy .env file to app directory for environment variable access
+    if [ -f "$project_dir/.env" ]; then
+        cp "$project_dir/.env" "$app_path/"
+    fi
     
     cd "$app_path"
     
@@ -399,6 +521,14 @@ test_complete_scenario() {
     local project_dir
     project_dir=$(create_test_project "$scenario_name" "$apps" "$packages" "$orm") || return 1
     
+    # Track current project for cleanup
+    CURRENT_PROJECT_DIR="$project_dir"
+    
+    # Start Docker services for ORM scenarios
+    if [ "$orm" = "prisma" ] || [ "$orm" = "drizzle" ]; then
+        start_docker_services "$project_dir" || return 1
+    fi
+    
     # Validate code quality
     validate_code_quality "$project_dir" "$scenario_name" || return 1
     
@@ -418,6 +548,11 @@ test_complete_scenario() {
                 run_playwright_for_template "$template_name" "$project_dir" || true  # Don't fail scenario on Playwright failure
             fi
         done
+    fi
+    
+    # Clean up Docker services for this scenario
+    if [ "$orm" = "prisma" ] || [ "$orm" = "drizzle" ]; then
+        stop_docker_services "$project_dir"
     fi
     
     log_success "Scenario '$description' completed successfully!"
