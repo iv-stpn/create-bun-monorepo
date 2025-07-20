@@ -97,15 +97,8 @@ test.describe("React Native Expo Web E2E", () => {
 		if ((await touchableElements.count()) > 0) {
 			// Test that touchable elements are accessible
 			await expect(touchableElements.first()).toBeVisible();
-
-			// Test touch interaction
-			try {
-				await touchableElements.first().tap();
-				// If no error, the tap worked
-			} catch {
-				// Some elements might not be interactive, that's ok
-				console.log("Touch interaction test completed (element may not be interactive)");
-			}
+			// Simulate a touch interaction
+			await touchableElements.first().tap();
 		}
 	});
 

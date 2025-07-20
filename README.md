@@ -178,7 +178,7 @@ bun run dev
 bun run build
 
 # Run complete test suite (recommended before commits)
-bun run test              # Tests all 4 core scenarios with E2E and code quality
+bun run test              # Tests all scenarios with E2E and code quality checks
 
 # Linting and formatting
 bun run lint              # Check for issues
@@ -192,7 +192,7 @@ The project includes a comprehensive, unified test suite that validates all core
 
 **Single Unified Test Runner:**
 ```bash
-# Core testing (default) - 4 essential scenarios
+# Core testing (default)
 bun run test              # Runs test-runner.sh in core mode
 
 # Extended testing options

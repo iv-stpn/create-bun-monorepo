@@ -96,52 +96,27 @@ async function updatePackageJson(
 ): Promise<void> {
 	const packageJsonPath = join(targetPath, "package.json");
 
-	try {
-		const packageJsonContent = await readFile(packageJsonPath, "utf-8");
-		const packageJson = JSON.parse(packageJsonContent);
+	// The package.json file should exist
+	const packageJsonContent = await readFile(packageJsonPath, "utf-8");
+	const packageJson = JSON.parse(packageJsonContent);
 
-		// Update the name
-		packageJson.name = packageName;
+	// Update the name
+	packageJson.name = packageName;
 
-		// Add workspace dependencies if they exist
-		if (dependencyPackages.length > 0) {
-			const baseProjectName = packageName.split("/")[0].replace("@", "");
+	// Add workspace dependencies if they exist
+	if (dependencyPackages.length > 0) {
+		const baseProjectName = packageName.split("/")[0].replace("@", "");
 
-			packageJson.dependencies = {
-				...packageJson.dependencies,
-				...dependencyPackages.reduce<Record<string, string>>((acc, pkg) => {
-					acc[`@${baseProjectName}/${pkg.name}`] = "workspace:*";
-					return acc;
-				}, {}),
-			};
-		}
-
-		await writeJsonFile(packageJsonPath, packageJson);
-	} catch {
-		// If package.json doesn't exist, create a basic one
-		console.log(`No package.json found in template, creating basic one for ${packageName}`);
-		const basicPackageJson = {
-			name: packageName,
-			version: "1.0.0",
-			private: true,
-			type: "module",
-			scripts: {
-				build: "bun build index.ts --outdir dist --target node",
-				start: "node dist/index.js",
-			},
-			dependencies: dependencyPackages.reduce<Record<string, string>>((acc, pkg) => {
-				const baseProjectName = packageName.split("/")[0].replace("@", "");
+		packageJson.dependencies = {
+			...packageJson.dependencies,
+			...dependencyPackages.reduce<Record<string, string>>((acc, pkg) => {
 				acc[`@${baseProjectName}/${pkg.name}`] = "workspace:*";
 				return acc;
 			}, {}),
-			devDependencies: {
-				typescript: "^5",
-				"bun-types": "latest",
-			},
 		};
-
-		await writeJsonFile(packageJsonPath, basicPackageJson);
 	}
+
+	await writeJsonFile(packageJsonPath, packageJson);
 }
 
 /**

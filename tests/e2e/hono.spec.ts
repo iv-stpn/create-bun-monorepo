@@ -47,17 +47,12 @@ test.describe("Hono Backend E2E", () => {
 
 	test("should respond to ORM test endpoint when ORM is configured", async ({ request }) => {
 		if (process.env.ORM) {
-			try {
-				const response = await request.get("http://localhost:8000/orm-test");
-				if (response.ok()) {
-					const data = await response.json();
-					expect(data).toHaveProperty("message", "orm-test-endpoint");
-					expect(data).toHaveProperty("orm");
-					expect(data.orm).toBe(process.env.ORM);
-				}
-			} catch (_e) {
-				// ORM endpoint might not be injected in all scenarios
-				console.log("ORM test endpoint not available, skipping check");
+			const response = await request.get("http://localhost:8000/orm-test");
+			if (response.ok()) {
+				const data = await response.json();
+				expect(data).toHaveProperty("message", "orm-test-endpoint");
+				expect(data).toHaveProperty("orm");
+				expect(data.orm).toBe(process.env.ORM);
 			}
 		} else {
 			console.log("No ORM configured, skipping ORM endpoint test");
