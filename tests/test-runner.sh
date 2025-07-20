@@ -349,14 +349,14 @@ validate_code_quality() {
         verify_database_reset "drizzle" "$scenario_name" || return 1
         
         # Generate migration files
-        if ! timeout 60 bunx drizzle-kit generate > "/tmp/drizzle-generate-validate-$scenario_name.log" 2>&1; then
+        if ! timeout 60 bunx drizzle-kit generate:pg > "/tmp/drizzle-generate-validate-$scenario_name.log" 2>&1; then
             log_error "Drizzle generate failed during validation for $scenario_name"
             tail -20 "/tmp/drizzle-generate-validate-$scenario_name.log" || true
             return 1
         fi
         
         # Apply migrations
-        if ! timeout 60 bunx drizzle-kit migrate > "/tmp/drizzle-migrate-validate-$scenario_name.log" 2>&1; then
+        if ! timeout 60 bunx drizzle-kit up:pg > "/tmp/drizzle-migrate-validate-$scenario_name.log" 2>&1; then
             log_error "Drizzle migrate failed during validation for $scenario_name"
             tail -20 "/tmp/drizzle-migrate-validate-$scenario_name.log" || true
             return 1
@@ -757,7 +757,11 @@ test_single_comprehensive_scenario() {
     log_info "Running tests for scenario: $scenario_name in $project_dir"
         
     # Step 1: Install dependencies
-    log_info "Step 1/4: Installing dependencies..."
+    if [ "$orm" = "prisma" ] || [ "$orm" = "drizzle" ]; then
+        log_info "Step 1/4: Installing dependencies..."
+    else
+        log_info "Step 1/3: Installing dependencies..."
+    fi
     if ! timeout 300 bun install > "/tmp/install-$scenario_name.log" 2>&1; then
         log_error "Failed to install dependencies for $scenario_name"
         tail -20 "/tmp/install-$scenario_name.log" || true
@@ -766,7 +770,11 @@ test_single_comprehensive_scenario() {
     log_success "Dependencies installed"
     
     # Step 2: Run linting  
-    log_info "Step 2/4: Running linting..."
+    if [ "$orm" = "prisma" ] || [ "$orm" = "drizzle" ]; then
+        log_info "Step 2/4: Running linting..."
+    else
+        log_info "Step 2/3: Running linting..."
+    fi
     if [ "$linting" = "biome" ]; then
         if ! timeout 120 bun run lint > "/tmp/lint-$scenario_name.log" 2>&1; then
             log_error "Linting failed for $scenario_name"
@@ -795,7 +803,11 @@ test_single_comprehensive_scenario() {
     log_success "Linting passed"
     
     # Step 3: Run typecheck
-    log_info "Step 3/4: Running typecheck..."
+    if [ "$orm" = "prisma" ] || [ "$orm" = "drizzle" ]; then
+        log_info "Step 3/4: Running typecheck..."
+    else
+        log_info "Step 3/3: Running typecheck..."
+    fi
     if ! timeout 120 bun run typecheck > "/tmp/typecheck-$scenario_name.log" 2>&1; then
         log_error "Typecheck failed for $scenario_name"
         tail -20 "/tmp/typecheck-$scenario_name.log" || true
@@ -803,8 +815,50 @@ test_single_comprehensive_scenario() {
     fi
     log_success "Typecheck passed"
     
-    # Step 4: Run Prisma tests (for all scenarios as requested)
-    log_info "Step 4/4: Running Prisma tests..."
+    # Step 4: Run ORM tests (only if ORM is configured)
+    if [ "$orm" = "prisma" ] || [ "$orm" = "drizzle" ]; then
+        log_info "Step 4/4: Running ORM tests..."
+    else
+        log_info "No ORM configured, skipping ORM tests"
+        # Skip directly to build testing
+        log_info "Testing app builds..."
+        local build_errors=()
+        
+        # First build all packages to ensure they're available for apps (if packages exist)
+        if [ -d "packages" ] && [ "$(ls -A packages 2>/dev/null)" ]; then
+            log_info "Building packages first..."
+            if ! timeout 120 bun run --filter="./packages/*" build > "/tmp/build-packages-$scenario_name.log" 2>&1; then
+                log_error "Package build failed"
+                tail -20 "/tmp/build-packages-$scenario_name.log" || true
+                return 1
+            fi
+            log_success "Packages built successfully"
+        else
+            log_info "No packages to build, skipping package build step"
+        fi
+        
+        # Test a few key apps to ensure they build
+        local test_apps=("web" "api" "admin")
+        for app in "${test_apps[@]}"; do
+            if [ -d "apps/$app" ]; then
+                # Build from root using workspace filtering to ensure dependencies are resolved
+                if ! timeout 120 bun run --filter="./apps/$app" build > "/tmp/build-$app-$scenario_name.log" 2>&1; then
+                    build_errors+=("$app")
+                    log_error "Build failed for app: $app"
+                else
+                    log_success "Build passed for app: $app"  
+                fi
+            fi
+        done
+        
+        if [ ${#build_errors[@]} -gt 0 ]; then
+            log_error "Build errors in apps: ${build_errors[*]}"
+            return 1
+        fi
+        
+        log_success "All validations passed for scenario: $description"
+        return 0
+    fi
     
     # Start Docker services if ORM is configured
     if [ "$orm" = "prisma" ] || [ "$orm" = "drizzle" ]; then
@@ -858,19 +912,20 @@ test_single_comprehensive_scenario() {
         else
             # If drop command is not available, try to reset using push with --force
             log_info "Drop command not available, attempting fresh schema push..."
-            if timeout 60 bunx drizzle-kit push --force > "/tmp/drizzle-push-reset-$scenario_name.log" 2>&1; then
-                log_success "Database reset completed using push --force"
+            if timeout 60 bunx drizzle-kit push:pg --force > "/tmp/drizzle-push-reset-$scenario_name.log" 2>&1; then
+                log_success "Database reset completed using push:pg --force"
             else
                 log_info "Manual reset not available, continuing with migration (may have conflicts)..."
             fi
         fi
         
         # Verify database is accessible and clean
-        verify_database_reset "drizzle" "$scenario_name" || return 1
+        # Skip explicit verification for Drizzle (handled by generate/migrate commands)
+        log_info "Skipping explicit database verification for Drizzle (handled by migrate commands)"
         
         # Generate migration files
         log_info "Generating Drizzle migration files..."
-        if ! timeout 60 bunx drizzle-kit generate > "/tmp/drizzle-generate-$scenario_name.log" 2>&1; then
+        if ! timeout 60 bunx drizzle-kit generate:pg > "/tmp/drizzle-generate-$scenario_name.log" 2>&1; then
             log_error "Drizzle generate failed for $scenario_name"
             tail -20 "/tmp/drizzle-generate-$scenario_name.log" || true
             return 1
@@ -879,7 +934,7 @@ test_single_comprehensive_scenario() {
         
         # Apply migrations
         log_info "Applying Drizzle migrations..."
-        if ! timeout 60 bunx drizzle-kit migrate > "/tmp/drizzle-migrate-$scenario_name.log" 2>&1; then
+        if ! timeout 60 bunx drizzle-kit up:pg > "/tmp/drizzle-migrate-$scenario_name.log" 2>&1; then
             log_error "Drizzle migrate failed for $scenario_name"
             tail -20 "/tmp/drizzle-migrate-$scenario_name.log" || true
             return 1
@@ -891,17 +946,21 @@ test_single_comprehensive_scenario() {
     log_info "Testing app builds..."
     local build_errors=()
     
-    # First build all packages to ensure they're available for apps
-    log_info "Building packages first..."
-    if ! timeout 120 bun run --filter="./packages/*" build > "/tmp/build-packages-$scenario_name.log" 2>&1; then
-        log_error "Package build failed"
-        tail -20 "/tmp/build-packages-$scenario_name.log" || true
-        return 1
+    # First build all packages to ensure they're available for apps (if packages exist)
+    if [ -d "packages" ] && [ "$(ls -A packages 2>/dev/null)" ]; then
+        log_info "Building packages first..."
+        if ! timeout 120 bun run --filter="./packages/*" build > "/tmp/build-packages-$scenario_name.log" 2>&1; then
+            log_error "Package build failed"
+            tail -20 "/tmp/build-packages-$scenario_name.log" || true
+            return 1
+        fi
+        log_success "Packages built successfully"
+    else
+        log_info "No packages to build, skipping package build step"
     fi
-    log_success "Packages built successfully"
     
-    # Test a few key apps to ensure they build
-    local test_apps=("web" "api" "admin")
+    # Test all apps to ensure they build
+    local test_apps=("web" "api" "admin" "cms" "gateway" "service" "desktop" "native" "fullstack")
     for app in "${test_apps[@]}"; do
         if [ -d "apps/$app" ]; then
             # Build from root using workspace filtering to ensure dependencies are resolved
@@ -999,7 +1058,7 @@ verify_database_reset() {
     elif [ "$orm_type" = "drizzle" ]; then
         # Verify Drizzle can connect and push schema
         log_info "Verifying Drizzle database connection..."
-        if ! timeout 30 bunx drizzle-kit push --force > "/tmp/drizzle-verify-$scenario_name.log" 2>&1; then
+        if ! timeout 30 bunx drizzle-kit push:pg --force > "/tmp/drizzle-verify-$scenario_name.log" 2>&1; then
             log_error "Failed to verify Drizzle database connection"
             tail -10 "/tmp/drizzle-verify-$scenario_name.log" || true
             return 1

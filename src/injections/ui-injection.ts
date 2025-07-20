@@ -32,8 +32,8 @@ export async function injectUIComponentDemos(
 	packages: PackageTemplate[],
 	projectName: string,
 ): Promise<void> {
-	const hasUIPackage = packages.some((pkg) => pkg.name === "ui");
-	const hasUINativePackage = packages.some((pkg) => pkg.name === "ui-native");
+	const hasUIPackage = packages.some((pkg) => pkg.template === "ui");
+	const hasUINativePackage = packages.some((pkg) => pkg.template === "ui-native");
 
 	if (!hasUIPackage && !hasUINativePackage) return;
 
