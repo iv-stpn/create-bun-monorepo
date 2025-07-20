@@ -1,5 +1,5 @@
 /**
- * Template configuration for the Bun Monorepo Scaffolder
+ * Template configuration for create-bun-monorepo
  */
 
 interface TemplateInfo {

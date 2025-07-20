@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 
-# Bun Monorepo Scaffolder - Unified Test Suite
 # Comprehensive testing for all scenarios with E2E validation and Playwright support
 # This single script replaces all other test runners for maximum simplicity
 
@@ -10,7 +9,7 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 CLI_PATH="$PROJECT_ROOT/dist/index.js"
-TEST_OUTPUT_DIR="/tmp/bun-scaffolder-test"
+TEST_OUTPUT_DIR="/tmp/create-bun-monorepo"
 
 # Test modes
 RUN_PLAYWRIGHT="${RUN_PLAYWRIGHT:-false}"
@@ -690,7 +689,7 @@ generate_test_report() {
 
 # Show usage information
 show_usage() {
-    echo "Bun Monorepo Scaffolder - Unified Test Runner"
+    echo "create-bun-monorepo test runner"
     echo ""
     echo "USAGE:"
     echo "  $0 [OPTIONS]"
@@ -754,7 +753,7 @@ main() {
     # Parse arguments
     parse_arguments "$@"
     
-    log_section "BUN MONOREPO SCAFFOLDER - UNIFIED TEST SUITE"
+    log_section "UNIFIED TEST SUITE"
     log_info "Starting test suite at $(date)"
     log_info "Test mode: $TEST_MODE"
     log_info "Playwright enabled: $RUN_PLAYWRIGHT"

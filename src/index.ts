@@ -2,14 +2,14 @@
 
 import chalk from "chalk";
 import { addOrmSetup, addSingleApp, addSinglePackage, addToMonorepo } from "./add-command";
-import { scaffold } from "./create-command";
+import { create } from "./create-command";
 import { logger } from "./lib/logger";
 
 /**
  * Display banner with tool information
  */
 export function displayBanner(): void {
-	console.log(chalk.blue.bold("🚀 Bun Monorepo Scaffolder"));
+	console.log(chalk.blue.bold("🚀 create-bun-monorepo"));
 	console.log(chalk.gray("Create modern monorepos with Bun, TypeScript, and your favorite tools!\n"));
 }
 
@@ -56,7 +56,7 @@ async function main() {
 				break;
 			case "scaffold":
 			case undefined:
-				await scaffold();
+				await create();
 				break;
 			default:
 				console.log(`Unknown command: ${command}`);

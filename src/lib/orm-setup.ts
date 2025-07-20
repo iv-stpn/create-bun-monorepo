@@ -156,7 +156,7 @@ async function createPrismaSetup(rootPath: string, database: "postgresql" | "mys
 /**
  * Generate Drizzle database connection content
  */
-function getDrizzleDbContent(database: "postgresql" | "mysql" | "sqlite"): string {
+export function getDrizzleDbContent(database: "postgresql" | "mysql" | "sqlite"): string {
 	switch (database) {
 		case "postgresql":
 			return `import { drizzle } from "drizzle-orm/postgres-js";
@@ -198,7 +198,7 @@ export const db = drizzle(sqlite);
 /**
  * Generate Drizzle schema content
  */
-function getDrizzleSchemaContent(database: "postgresql" | "mysql" | "sqlite"): string {
+export function getDrizzleSchemaContent(database: "postgresql" | "mysql" | "sqlite"): string {
 	const imports =
 		database === "postgresql"
 			? 'import { pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";'
@@ -239,7 +239,7 @@ export type NewUser = typeof users.$inferInsert;
 /**
  * Generate Drizzle config content
  */
-function getDrizzleConfigContent(database: "postgresql" | "mysql" | "sqlite"): string {
+export function getDrizzleConfigContent(database: "postgresql" | "mysql" | "sqlite"): string {
 	const dialect = database === "postgresql" ? "postgresql" : database;
 
 	return `import type { Config } from "drizzle-kit";
@@ -258,7 +258,7 @@ export default {
 /**
  * Generate Drizzle environment content
  */
-function getDrizzleEnvContent(database: "postgresql" | "mysql" | "sqlite"): string {
+export function getDrizzleEnvContent(database: "postgresql" | "mysql" | "sqlite"): string {
 	const exampleUrl =
 		database === "postgresql"
 			? "postgresql://postgres:postgres@localhost:5432/myapp_dev"
@@ -274,7 +274,7 @@ DATABASE_URL="${exampleUrl}"
 /**
  * Generate Prisma client content
  */
-function getPrismaClientContent(): string {
+export function getPrismaClientContent(): string {
 	return `import { PrismaClient } from "@prisma/client";
 
 const globalForPrisma = globalThis as unknown as {
@@ -290,7 +290,7 @@ if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = db;
 /**
  * Generate Prisma schema content
  */
-function getPrismaSchemaContent(database: "postgresql" | "mysql" | "sqlite"): string {
+export function getPrismaSchemaContent(database: "postgresql" | "mysql" | "sqlite"): string {
 	const provider = database === "postgresql" ? "postgresql" : database;
 
 	return `// This is your Prisma schema file,
@@ -320,7 +320,7 @@ model User {
 /**
  * Generate Prisma seed content
  */
-function getPrismaSeedContent(): string {
+export function getPrismaSeedContent(): string {
 	return `import { db } from "./db";
 
 async function main() {
@@ -349,7 +349,7 @@ main()
 /**
  * Generate Prisma environment content
  */
-function getPrismaEnvContent(database: "postgresql" | "mysql" | "sqlite"): string {
+export function getPrismaEnvContent(database: "postgresql" | "mysql" | "sqlite"): string {
 	const exampleUrl =
 		database === "postgresql"
 			? "postgresql://postgres:postgres@localhost:5432/myapp_dev"

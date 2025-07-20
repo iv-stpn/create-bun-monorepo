@@ -3,7 +3,19 @@ import { join } from "node:path";
 import chalk from "chalk";
 import prompts from "prompts";
 import { addDockerCompose } from "./injections";
-import { createOrmConfig, getOrmDependencies, getOrmScripts } from "./lib/orm-setup";
+import {
+	createOrmConfig,
+	getDrizzleConfigContent,
+	getDrizzleDbContent,
+	getDrizzleEnvContent,
+	getDrizzleSchemaContent,
+	getOrmDependencies,
+	getOrmScripts,
+	getPrismaClientContent,
+	getPrismaEnvContent,
+	getPrismaSchemaContent,
+	getPrismaSeedContent,
+} from "./lib/orm-setup";
 import { createAppWithProcessing, createPackageWithProcessing, getPackageTemplateChoices } from "./lib/shared-setup";
 import type { TemplatesConfig } from "./templates";
 import { getTemplateConfig } from "./templates";
@@ -494,7 +506,6 @@ async function updateTsConfigReferences(
 	}
 }
 
-// Helper functions (some extracted from scaffolder.ts)
 function getTemplateChoices(
 	config: TemplatesConfig,
 	type: "apps" | "packages",
@@ -578,184 +589,6 @@ async function createPrismaSetup(rootPath: string, database: "postgresql" | "mys
 
 	const envContent = getPrismaEnvContent(database);
 	await writeFile(join(rootPath, ".env.example"), envContent, { encoding: "utf-8" });
-}
-
-// ORM content generation functions (copied from scaffolder.ts)
-function getDrizzleDbContent(database: "postgresql" | "mysql" | "sqlite"): string {
-	switch (database) {
-		case "postgresql":
-			return `import { drizzle } from 'drizzle-orm/postgres-js';
-import postgres from 'postgres';
-import { env } from './env';
-
-const client = postgres(env.DATABASE_URL);
-export const db = drizzle(client);
-`;
-
-		case "mysql":
-			return `import { drizzle } from 'drizzle-orm/mysql2';
-import mysql from 'mysql2/promise';
-import { env } from './env';
-
-const connection = await mysql.createConnection(env.DATABASE_URL);
-export const db = drizzle(connection);
-`;
-
-		case "sqlite":
-			return `import { drizzle } from 'drizzle-orm/better-sqlite3';
-import Database from 'better-sqlite3';
-import { env } from './env';
-
-const sqlite = new Database(env.DATABASE_URL);
-export const db = drizzle(sqlite);
-`;
-	}
-}
-
-function getDrizzleSchemaContent(database: "postgresql" | "mysql" | "sqlite"): string {
-	const imports =
-		database === "postgresql"
-			? "import { pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';"
-			: database === "mysql"
-				? "import { mysqlTable, text, timestamp, varchar } from 'drizzle-orm/mysql-core';"
-				: "import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';";
-
-	const tableFunction = database === "postgresql" ? "pgTable" : database === "mysql" ? "mysqlTable" : "sqliteTable";
-
-	const idField =
-		database === "postgresql"
-			? "id: uuid('id').defaultRandom().primaryKey(),"
-			: database === "mysql"
-				? "id: varchar('id', { length: 36 }).primaryKey(),"
-				: "id: integer('id', { mode: 'number' }).primaryKey({ autoIncrement: true }),";
-
-	const timestampFields =
-		database === "sqlite"
-			? `createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
-	updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),`
-			: `createdAt: timestamp('created_at').defaultNow().notNull(),
-	updatedAt: timestamp('updated_at').defaultNow().notNull(),`;
-
-	return `${imports}
-
-export const users = ${tableFunction}('users', {
-	${idField}
-	name: text('name').notNull(),
-	email: text('email').notNull().unique(),
-	${timestampFields}
-});
-
-export type User = typeof users.$inferSelect;
-export type NewUser = typeof users.$inferInsert;
-`;
-}
-
-function getDrizzleConfigContent(database: "postgresql" | "mysql" | "sqlite"): string {
-	const dialect = database === "postgresql" ? "postgresql" : database;
-
-	return `import type { Config } from 'drizzle-kit';
-
-export default {
-	schema: './src/lib/schema.ts',
-	out: './drizzle',
-	dialect: '${dialect}',
-	dbCredentials: {
-		${database === "sqlite" ? "url: process.env.DATABASE_URL || './local.db'," : "url: process.env.DATABASE_URL!,"}
-	},
-} satisfies Config;
-`;
-}
-
-function getDrizzleEnvContent(database: "postgresql" | "mysql" | "sqlite"): string {
-	const exampleUrl =
-		database === "postgresql"
-			? "postgresql://username:password@localhost:5432/database"
-			: database === "mysql"
-				? "mysql://username:password@localhost:3306/database"
-				: "./local.db";
-
-	return `# Database
-DATABASE_URL="${exampleUrl}"
-`;
-}
-
-function getPrismaClientContent(): string {
-	return `import { PrismaClient } from '@prisma/client';
-
-const globalForPrisma = globalThis as unknown as {
-	prisma: PrismaClient | undefined;
-};
-
-export const db = globalForPrisma.prisma ?? new PrismaClient();
-
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = db;
-`;
-}
-
-function getPrismaSchemaContent(database: "postgresql" | "mysql" | "sqlite"): string {
-	const provider = database === "postgresql" ? "postgresql" : database;
-
-	return `// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-generator client {
-	provider = "prisma-client-js"
-}
-
-datasource db {
-	provider = "${provider}"
-	url      = env("DATABASE_URL")
-}
-
-model User {
-	id        String   @id @default(cuid())
-	name      String
-	email     String   @unique
-	createdAt DateTime @default(now()) @map("created_at")
-	updatedAt DateTime @updatedAt @map("updated_at")
-
-	@@map("users")
-}
-`;
-}
-
-function getPrismaSeedContent(): string {
-	return `import { db } from './db';
-
-async function main() {
-	// Create sample user
-	const user = await db.user.create({
-		data: {
-			name: 'John Doe',
-			email: 'john@example.com',
-		},
-	});
-
-	console.log('Created user:', user);
-}
-
-main()
-	.catch((e) => {
-		console.error(e);
-		process.exit(1);
-	})
-	.finally(async () => {
-		await db.$disconnect();
-	});
-`;
-}
-
-function getPrismaEnvContent(database: "postgresql" | "mysql" | "sqlite"): string {
-	const exampleUrl =
-		database === "postgresql"
-			? "postgresql://username:password@localhost:5432/database"
-			: database === "mysql"
-				? "mysql://username:password@localhost:3306/database"
-				: "file:./dev.db";
-
-	return `# Database
-DATABASE_URL="${exampleUrl}"
-`;
 }
 
 export async function addSinglePackage(): Promise<void> {

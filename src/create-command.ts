@@ -1,6 +1,5 @@
 import { cp, mkdir, readFile, writeFile } from "node:fs/promises";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { join } from "node:path";
 import chalk from "chalk";
 import prompts from "prompts";
 import { rootPath } from "./constants";
@@ -15,19 +14,15 @@ import {
 } from "./lib/shared-setup";
 import type { TemplatesConfig } from "./templates";
 import { getTemplateConfig, ORM_FRAMEWORKS } from "./templates";
-import type { AppTemplate, OrmConfig, PackageTemplate, ScaffoldOptions } from "./types";
+import type { AppTemplate, CreateOptions, OrmConfig, PackageTemplate } from "./types";
 import { writeJsonFile } from "./utils/file";
-
-// Get the directory of the current module
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
 
 // Regular expressions for parsing template specifications
 const APP_TEMPLATE_REGEX = /^([^[]+)(?:\[([^\]]+)\])?$/;
 const PACKAGE_TEMPLATE_REGEX = /^([^[]+)(?:\[([^\]]+)\])?$/;
 
-export async function scaffold() {
-	console.log(chalk.blue("🚀 Bun Monorepo Scaffolder"));
+export async function create() {
+	console.log(chalk.blue("🚀 create-bun-monorepo"));
 	console.log(chalk.gray("Let's create your new monorepo!\n"));
 
 	const options = await promptUser();
@@ -41,7 +36,7 @@ export async function scaffold() {
 	if (options.linting !== "none") console.log(chalk.yellow("  bun run format"));
 }
 
-async function promptUser(): Promise<ScaffoldOptions> {
+async function promptUser(): Promise<CreateOptions> {
 	// Check for non-interactive mode via environment variables
 	const nonInteractive = process.env.NON_INTERACTIVE === "true";
 
@@ -317,7 +312,7 @@ async function promptUser(): Promise<ScaffoldOptions> {
 	};
 }
 
-async function createMonorepo(options: ScaffoldOptions) {
+async function createMonorepo(options: CreateOptions) {
 	const { appName, linting, apps, packages, orm } = options;
 
 	// Create root directory

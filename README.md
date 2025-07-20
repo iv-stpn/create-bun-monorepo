@@ -1,6 +1,6 @@
-# Bun Monorepo Scaffolder
+# create-bun-monorepo
 
-A CLI tool to quickly scaffold Bun monorepos with apps and packages.
+A CLI tool to quickly scaffold Bun monorepos with apps and packages, or add packages and apps to existing Bun monorepos.
 
 ## Features
 
@@ -44,7 +44,7 @@ npm install -g create-bun-monorepo
 ## Usage
 
 ```bash
-bun-scaffold
+create-bun-monorepo
 ```
 
 The CLI will guide you through the setup process:

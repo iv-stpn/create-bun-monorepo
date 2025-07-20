@@ -52,7 +52,7 @@ jobs:
       with:
         name: test-artifacts
         path: |
-          /tmp/bun-scaffolder-test/
+          /tmp/create-bun-monorepo/
           /tmp/*.log
         retention-days: 3
     

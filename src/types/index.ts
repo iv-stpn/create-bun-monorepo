@@ -1,5 +1,5 @@
 /**
- * Type definitions for the Bun Monorepo Scaffolder
+ * Type definitions for create-bun-monorepo
  */
 
 export interface AppTemplate {
@@ -21,7 +21,7 @@ export interface OrmConfig {
 	database: "postgresql" | "mysql" | "sqlite";
 }
 
-export interface ScaffoldOptions {
+export interface CreateOptions {
 	appName: string;
 	linting: "biome" | "eslint-prettier" | "none";
 	apps: AppTemplate[];
