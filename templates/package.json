@@ -1,7 +1,9 @@
 {
 	"name": "templates",
-	"version": "1.0.0",
-	"description": "Templates for monorepo scaffolding",
+	"author": "Ivan Stepanian <iv.stpn@gmail.com>",
+	"license": "MIT",
+	"version": "0.0.0",
+	"description": "Templates for create-bun-monorepo",
 	"scripts": {
 		"typecheck": "tsc --noEmit --pretty"
 	},
@@ -9,8 +11,6 @@
 		"apps/*",
 		"packages/*"
 	],
-	"author": "iv-stpn",
-	"license": "MIT",
 	"devDependencies": {
 		"@types/node": "^20",
 		"bun-types": "latest",

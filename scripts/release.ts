@@ -228,7 +228,7 @@ function main() {
 		}
 
 		if (!options.skipTests) {
-			runCommand("bun run test:ci", "Running tests...");
+			runCommand("bun run test:full", "Running tests...");
 			printSuccess("All tests passed");
 		}
 	}

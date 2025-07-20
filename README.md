@@ -279,69 +279,6 @@ Each scenario creates **one monorepo with ALL app templates** and tests differen
 ### Before Committing
 Simply run `bun run test` to validate that your changes work correctly across all scenarios.
 
-## Troubleshooting
-
-### UI Package Import Issues
-
-If you encounter issues importing UI packages in your apps (e.g., `Cannot resolve module '@myapp/ui'`), follow these steps:
-
-1. **Ensure the UI package is built:**
-```bash
-# Build the UI package first
-cd packages/ui
-bun run build
-
-# Or build all packages at once from root
-bun run build
-```
-
-2. **Check workspace dependencies:**
-Make sure your app's `package.json` includes the UI package:
-```json
-{
-  "dependencies": {
-    "@myapp/ui": "workspace:*"
-  }
-}
-```
-
-3. **Install dependencies:**
-```bash
-# From the monorepo root
-bun install
-```
-
-4. **Verify package exports:**
-The UI package should have proper `exports` in its `package.json`:
-```json
-{
-  "main": "dist/index.js",
-  "module": "dist/index.js", 
-  "types": "src/index.ts",
-  "exports": {
-    ".": {
-      "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
-    },
-    "./styles": "./dist/styles.css"
-  }
-}
-```
-
-5. **Import correctly in your app:**
-```typescript
-import { Button } from "@myapp/ui";
-import "@myapp/ui/styles"; // For CSS styles
-```
-
-### Build Order
-
-UI packages must be built before apps that consume them. Use the root-level build script:
-```bash
-# This builds packages first, then apps
-bun run build
-```
-
 ## Contributing
 
 1. Fork the repository
