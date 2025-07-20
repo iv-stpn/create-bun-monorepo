@@ -175,81 +175,114 @@ async function promptUser(): Promise<CreateOptions> {
 	]);
 
 	// Check if user cancelled
-	if (!response.appName || !response.appsInput) {
-		process.exit(0);
-	}
+	if (!response.appName || !response.appsInput) process.exit(0);
 
-	const appNames = response.appsInput
+	if (typeof response.appsInput !== "string") throw new Error("Invalid input for appsInput. Expected a string.");
+	if (typeof response.selectedPackages !== "object" || !Array.isArray(response.selectedPackages))
+		throw new Error("Invalid input for selectedPackages. Expected an array.");
+
+	const appInputs = response.appsInput
 		.split(",")
 		.map((app: string) => app.trim())
 		.filter(Boolean);
 
 	const selectedPackageTemplates = response.selectedPackages || [];
 
+	// Parse app names and templates from input (supporting bracket notation)
+	const parsedApps = appInputs.map((input: string) => {
+		const match = input.match(APP_TEMPLATE_REGEX);
+		if (match) {
+			const [, name, template] = match;
+			const appName = name?.trim() || template?.trim();
+			if (!appName) throw new Error(`Invalid app name format: ${input}`);
+			return { name: appName, specifiedTemplate: template?.trim() };
+		}
+		return { name: input, specifiedTemplate: undefined };
+	});
+
 	// Prompt for app templates
 	const apps: AppTemplate[] = [];
-	for (const appName of appNames) {
-		console.log(chalk.cyan(`\nConfiguring app: ${appName}`));
+	for (const { name: appName, specifiedTemplate } of parsedApps) {
+		if (specifiedTemplate) {
+			// Template specified via bracket notation - validate and use it
+			console.log(chalk.cyan(`\nConfiguring app: ${appName} [${specifiedTemplate}]`));
 
-		let selectedTemplate: AppTemplate | null = null;
-
-		while (!selectedTemplate) {
-			const categoryChoices = getTemplateChoices(templateConfig, "apps");
-			const categoryResponse = await prompts({
-				type: "select",
-				name: "category",
-				message: `Choose a template category for ${appName}:`,
-				choices: categoryChoices,
-			});
-
-			// Check if user cancelled
-			if (!categoryResponse.category) {
-				process.exit(0);
+			const foundTemplate = findTemplateInConfig(templateConfig, specifiedTemplate, "apps");
+			if (!foundTemplate) {
+				throw new Error(
+					`Template "${specifiedTemplate}" not found. Available app templates: ${getAvailableTemplates(templateConfig, "apps").join(", ")}`,
+				);
 			}
 
-			if (categoryResponse.category.template === null) {
-				// User selected a category, now show templates within that category
-				const templateChoices = getCategoryTemplateChoices(templateConfig, categoryResponse.category.category);
+			apps.push({
+				name: appName,
+				template: specifiedTemplate,
+				category: foundTemplate.category,
+			});
+		} else {
+			// No template specified - prompt interactively
+			console.log(chalk.cyan(`\nConfiguring app: ${appName}`));
 
-				// Add a "Go Back" option at the top of template choices
-				const templateChoicesWithBack = [
-					{ title: "← Go Back", description: "Return to category selection", value: "__GO_BACK__" },
-					...templateChoices,
-				];
+			let selectedTemplate: AppTemplate | null = null;
 
-				const templateResponse = await prompts({
+			while (!selectedTemplate) {
+				const categoryChoices = getTemplateChoices(templateConfig, "apps");
+				const categoryResponse = await prompts({
 					type: "select",
-					name: "template",
-					message: `Choose a template for ${appName}:`,
-					choices: templateChoicesWithBack,
+					name: "category",
+					message: `Choose a template category for ${appName}:`,
+					choices: categoryChoices,
 				});
 
 				// Check if user cancelled
-				if (!templateResponse.template) {
+				if (!categoryResponse.category) {
 					process.exit(0);
 				}
 
-				if (templateResponse.template === "__GO_BACK__") {
-					// Go back to category selection
-					continue;
+				if (categoryResponse.category.template === null) {
+					// User selected a category, now show templates within that category
+					const templateChoices = getCategoryTemplateChoices(templateConfig, categoryResponse.category.category);
+
+					// Add a "Go Back" option at the top of template choices
+					const templateChoicesWithBack = [
+						{ title: "← Go Back", description: "Return to category selection", value: "__GO_BACK__" },
+						...templateChoices,
+					];
+
+					const templateResponse = await prompts({
+						type: "select",
+						name: "template",
+						message: `Choose a template for ${appName}:`,
+						choices: templateChoicesWithBack,
+					});
+
+					// Check if user cancelled
+					if (!templateResponse.template) {
+						process.exit(0);
+					}
+
+					if (templateResponse.template === "__GO_BACK__") {
+						// Go back to category selection
+						continue;
+					}
+
+					selectedTemplate = {
+						name: appName,
+						template: templateResponse.template,
+						category: categoryResponse.category.category,
+					};
+				} else {
+					// User selected blank template directly
+					selectedTemplate = {
+						name: appName,
+						template: categoryResponse.category.template,
+						category: categoryResponse.category.category,
+					};
 				}
-
-				selectedTemplate = {
-					name: appName,
-					template: templateResponse.template,
-					category: categoryResponse.category.category,
-				};
-			} else {
-				// User selected blank template directly
-				selectedTemplate = {
-					name: appName,
-					template: categoryResponse.category.template,
-					category: categoryResponse.category.category,
-				};
 			}
-		}
 
-		apps.push(selectedTemplate);
+			apps.push(selectedTemplate);
+		}
 	}
 
 	// Create packages directly from selected template keys
@@ -385,12 +418,15 @@ async function createRootPackageJson(
 		private: true,
 		workspaces: ["apps/*", ...(packages.length > 0 ? ["packages/*"] : [])],
 		scripts: {
-			build: 'bun run --filter="*" build',
+			build:
+				packages.length > 0
+					? 'bun run --filter="./packages/*" build && bun run --filter="./apps/*" build'
+					: 'bun run --filter="*" build',
 			dev: 'bun run --filter="*" dev',
 			typecheck: "tsc --noEmit --pretty",
 			...(linting === "biome" && {
 				lint: "biome check .",
-				"lint:fix": "biome check --apply .",
+				"lint:fix": "biome check --write .",
 				format: "biome format --write .",
 			}),
 			...(linting === "eslint-prettier" && {
@@ -404,18 +440,18 @@ async function createRootPackageJson(
 			...ormDeps.dependencies,
 		},
 		devDependencies: {
-			typescript: "^5",
 			"@types/node": "^20",
 			...(linting === "biome" && {
 				"@biomejs/biome": "2.1.1",
 			}),
 			...(linting === "eslint-prettier" && {
-				eslint: "^8.56.0",
-				prettier: "^3.2.0",
 				"@typescript-eslint/eslint-plugin": "^6.19.0",
 				"@typescript-eslint/parser": "^6.19.0",
+				eslint: "^8.56.0",
+				prettier: "^3.2.0",
 			}),
 			...ormDeps.devDependencies,
+			typescript: "^5",
 		},
 	};
 
@@ -470,9 +506,11 @@ async function createLintingConfig(
 		await cp(vscodePath, join(appName, ".vscode"), { recursive: true });
 	} else if (linting === "eslint-prettier") {
 		const eslintConfig = {
-			extends: ["eslint:recommended", "@typescript-eslint/recommended"],
+			extends: ["eslint:recommended", "plugin:@typescript-eslint/recommended"],
 			parser: "@typescript-eslint/parser",
+			plugins: ["@typescript-eslint"],
 			env: {
+				browser: true,
 				node: true,
 				es2022: true,
 			},
@@ -480,7 +518,9 @@ async function createLintingConfig(
 				ecmaVersion: "latest",
 				sourceType: "module",
 			},
-			rules: {},
+			rules: {
+				"@typescript-eslint/no-var-requires": "off",
+			},
 		};
 
 		const prettierConfig = {

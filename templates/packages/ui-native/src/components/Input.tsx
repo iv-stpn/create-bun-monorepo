@@ -1,4 +1,3 @@
-import type { ReactNode } from "react";
 import { StyleSheet, Text, TextInput, type TextInputProps, type TextStyle, View, type ViewStyle } from "react-native";
 
 export type InputProps = Omit<TextInputProps, "style"> & {
@@ -26,7 +25,7 @@ export function Input({
 	style,
 	inputStyle,
 	...props
-}: InputProps): ReactNode {
+}: InputProps) {
 	const containerStyle = [styles.container, style];
 
 	const inputContainerStyle = [

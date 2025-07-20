@@ -5,6 +5,7 @@ import type { OrmConfig } from "../types";
 
 // Regular expressions for ORM endpoint injection
 const IMPORT_LINE_REGEX = /^import\s+.*$/gm;
+const AFTER_IMPORT_EXPRESS_REGEX = /import cors from "cors";/;
 const LAST_IMPORT_REGEX = /(import\s+.*?;\s*\n)(?!import)/s;
 const EXPRESS_LISTEN_REGEX = /app\.listen\(/;
 const HONO_EXPORT_REGEX = /export default/;
@@ -43,9 +44,10 @@ export async function addOrmEndpoints(appPath: string, framework: string, orm: O
  * Add ORM endpoints to Express apps
  */
 function addExpressOrmEndpoints(content: string, orm: OrmConfig): string {
-	const importStatement =
+	const importPrefixStatement = orm.type === "drizzle" ? `\nimport { eq } from "drizzle-orm";\n` : "";
+	const importSuffixStatement =
 		orm.type === "drizzle"
-			? `import { eq } from "drizzle-orm";\nimport { db } from "../../../src/lib/db";\nimport { type NewUser, users } from "../../../src/lib/schema";`
+			? `import { db } from "../../../src/lib/db";\nimport { type NewUser, users } from "../../../src/lib/schema";`
 			: `import { db } from "../../../src/lib/db";`;
 
 	const userRoutes =
@@ -125,7 +127,8 @@ app.get("/api/users/:id", async (req, res) => {
 	// Add imports at the top (eq import is already included in importStatement for drizzle)
 	const withImports = content
 		.replace(IMPORT_LINE_REGEX, (match) => match)
-		.replace(LAST_IMPORT_REGEX, `$1${importStatement}\n\n`);
+		.replace(LAST_IMPORT_REGEX, `$1${importSuffixStatement}\n\n`)
+		.replace(AFTER_IMPORT_EXPRESS_REGEX, (match) => `${match}${importPrefixStatement}`);
 
 	// Add routes before the server start
 	return withImports.replace(
@@ -139,9 +142,10 @@ app.listen(`,
  * Add ORM endpoints to Hono apps
  */
 function addHonoOrmEndpoints(content: string, orm: OrmConfig): string {
-	const importStatement =
+	const importPrefixStatement = orm.type === "drizzle" ? `import { eq } from "drizzle-orm";\n` : "";
+	const importSuffixStatement =
 		orm.type === "drizzle"
-			? `import { eq } from "drizzle-orm";\nimport { db } from "../../../src/lib/db";\nimport { type NewUser, users } from "../../../src/lib/schema";`
+			? `import { db } from "../../../src/lib/db";\nimport { type NewUser, users } from "../../../src/lib/schema";`
 			: `import { db } from "../../../src/lib/db";`;
 
 	const userRoutes =
@@ -224,7 +228,7 @@ app.get("/api/users/:id", async (c) => {
 	// Add imports at the top (eq import is already included in importStatement for drizzle)
 	const withImports = content
 		.replace(IMPORT_LINE_REGEX, (match) => match)
-		.replace(LAST_IMPORT_REGEX, `$1${importStatement}\n\n`);
+		.replace(LAST_IMPORT_REGEX, `${importPrefixStatement}$1${importSuffixStatement}\n\n`);
 
 	// Add routes before the export default
 	return withImports.replace(

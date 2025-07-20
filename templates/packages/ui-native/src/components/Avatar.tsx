@@ -1,4 +1,3 @@
-import type { ReactNode } from "react";
 import { Image, type ImageStyle, StyleSheet, Text, View, type ViewStyle } from "react-native";
 
 export type AvatarProps = {
@@ -9,7 +8,7 @@ export type AvatarProps = {
 	imageStyle?: ImageStyle;
 };
 
-export function Avatar({ source, size = "medium", fallbackText, style, imageStyle }: AvatarProps): ReactNode {
+export function Avatar({ source, size = "medium", fallbackText, style, imageStyle }: AvatarProps) {
 	const containerStyle = [styles.container, styles[`container_${size}`], style];
 
 	const avatarImageStyle = [styles.image, styles[`image_${size}`], imageStyle];

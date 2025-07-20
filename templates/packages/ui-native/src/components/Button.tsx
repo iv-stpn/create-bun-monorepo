@@ -2,7 +2,6 @@ import type { ReactNode } from "react";
 import { ActivityIndicator, StyleSheet, Text, type TextStyle, TouchableOpacity, type ViewStyle } from "react-native";
 
 export type ButtonProps = {
-	title: string;
 	onPress: () => void;
 	variant?: "primary" | "secondary" | "outline";
 	size?: "small" | "medium" | "large";
@@ -10,7 +9,7 @@ export type ButtonProps = {
 	loading?: boolean;
 	style?: ViewStyle;
 	textStyle?: TextStyle;
-};
+} & ({ title: string; children?: never } | { title?: never; children: ReactNode });
 
 export function Button({
 	title,
@@ -21,7 +20,7 @@ export function Button({
 	loading = false,
 	style,
 	textStyle,
-}: ButtonProps): ReactNode {
+}: ButtonProps) {
 	const buttonStyle = [
 		styles.button,
 		styles[`button_${variant}`],

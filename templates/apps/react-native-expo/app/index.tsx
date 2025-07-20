@@ -7,18 +7,20 @@ export default function HomeScreen() {
 
 	return (
 		<View style={styles.container}>
-			<Text style={styles.title}>Example app</Text>
-			<Text style={styles.subtitle}>Welcome to your Expo app!</Text>
+			<View style={styles.content}>
+				<Text style={styles.title}>Example app</Text>
+				<Text style={styles.subtitle}>Welcome to your Expo app!</Text>
 
-			<View style={styles.counterContainer}>
-				<TouchableOpacity style={styles.button} onPress={() => setCount(count + 1)}>
-					<Text style={styles.buttonText}>Count: {count}</Text>
-				</TouchableOpacity>
+				<View style={styles.counterContainer}>
+					<TouchableOpacity style={styles.button} onPress={() => setCount(count + 1)}>
+						<Text style={styles.buttonText}>Count: {count}</Text>
+					</TouchableOpacity>
+				</View>
+
+				<Text style={styles.instructions}>Edit app/index.tsx to start working on your app!</Text>
+
+				<StatusBar style="auto" />
 			</View>
-
-			<Text style={styles.instructions}>Edit app/index.tsx to start working on your app!</Text>
-
-			<StatusBar style="auto" />
 		</View>
 	);
 }
@@ -30,6 +32,11 @@ const styles = StyleSheet.create({
 		alignItems: "center",
 		justifyContent: "center",
 		padding: 20,
+	},
+	content: {
+		flex: 1,
+		alignItems: "center",
+		justifyContent: "center",
 	},
 	title: {
 		fontSize: 32,

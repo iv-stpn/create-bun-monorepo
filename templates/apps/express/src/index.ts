@@ -58,7 +58,7 @@ app.post("/api/users", (req, res) => {
 });
 
 // Error handling middleware
-app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+app.use((err: Error, _req: express.Request, res: express.Response) => {
 	console.error(err.stack);
 	res.status(500).json({ error: "Something went wrong!" });
 });

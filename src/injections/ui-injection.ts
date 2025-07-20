@@ -125,8 +125,8 @@ async function injectNextJSSolitoUIDemo(appPath: string, projectName: string): P
 			.replace(
 				SOLITO_LINK_REGEX,
 				`import { Button } from "@${projectName}/ui-native";
-import { Link } from "solito/link";
-import { useState } from "react";`,
+import { useState } from "react";
+import { Link } from "solito/link";`,
 			)
 			.replace(
 				SOLITO_HOME_REGEX,
@@ -160,15 +160,15 @@ async function injectRemixUIDemo(appPath: string, projectName: string): Promise<
 		const updatedContent = content
 			.replace(
 				REMIX_META_REGEX,
-				`import { Button } from "@${projectName}/ui";
-import type { MetaFunction } from "@remix-run/node";
+				`import type { MetaFunction } from "@remix-run/node";
+import { Button } from "@${projectName}/ui";
 import { useState } from "react";`,
 			)
 			.replace(
 				REMIX_INDEX_REGEX,
 				`export default function Index() {
 	const [count, setCount] = useState(0);
-	
+
 	return (`,
 			)
 			.replace(
@@ -200,16 +200,14 @@ async function injectReactNativeUIDemo(appPath: string, projectName: string): Pr
 	try {
 		const content = await readFile(appFilePath, "utf-8");
 
-		const updatedContent = content
-			.replace(
-				REACT_IMPORT_REGEX,
-				`import { Button } from "@${projectName}/ui-native";
-import { useState } from "react";`,
-			)
-			.replace(
+		const updatedContent =
+			`import { Button } from "@${projectName}/ui-native";\n` +
+			content.replace(
 				RN_TOUCHABLE_REGEX,
-				`<TouchableOpacity onPress={() => setCount(count + 1)}><Text>Count: {count}</Text></TouchableOpacity>
-<Button onPress={() => setCount(count + 1)}>Count: {count}</Button>`,
+				`<TouchableOpacity onPress={() => setCount(count + 1)}>
+						<Text>Count: {count}</Text>
+					</TouchableOpacity>
+					<Button onPress={() => setCount(count + 1)}>Count: {count}</Button>`,
 			);
 
 		await writeFile(appFilePath, updatedContent, "utf-8");

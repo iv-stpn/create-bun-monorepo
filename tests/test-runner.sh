@@ -619,12 +619,12 @@ test_all_scenarios() {
     # Configuration matrix: linting × orm × packages
     local scenarios=(
         # ESLint+Prettier configurations
-        "eslint-prisma-packages:eslint:prisma:$all_packages:ESLint+Prettier + Prisma + All Packages"
-        "eslint-prisma-none:eslint:prisma:$no_packages:ESLint+Prettier + Prisma + No Packages"
-        "eslint-drizzle-packages:eslint:drizzle:$all_packages:ESLint+Prettier + Drizzle + All Packages"
-        "eslint-drizzle-none:eslint:drizzle:$no_packages:ESLint+Prettier + Drizzle + No Packages"
-        "eslint-none-packages:eslint:none:$all_packages:ESLint+Prettier + No ORM + All Packages"
-        "eslint-none-none:eslint:none:$no_packages:ESLint+Prettier + No ORM + No Packages"
+        "eslint-prisma-packages:eslint-prettier:prisma:$all_packages:ESLint+Prettier + Prisma + All Packages"
+        "eslint-prisma-none:eslint-prettier:prisma:$no_packages:ESLint+Prettier + Prisma + No Packages"
+        "eslint-drizzle-packages:eslint-prettier:drizzle:$all_packages:ESLint+Prettier + Drizzle + All Packages"
+        "eslint-drizzle-none:eslint-prettier:drizzle:$no_packages:ESLint+Prettier + Drizzle + No Packages"
+        "eslint-none-packages:eslint-prettier:none:$all_packages:ESLint+Prettier + No ORM + All Packages"
+        "eslint-none-none:eslint-prettier:none:$no_packages:ESLint+Prettier + No ORM + No Packages"
         
         # Biome configurations
         "biome-prisma-packages:biome:prisma:$all_packages:Biome + Prisma + All Packages"

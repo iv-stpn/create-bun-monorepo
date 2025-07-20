@@ -183,6 +183,11 @@ function displayHelp() {
 	console.log("  add --app 'myapi[express]'         - Create 'myapi' app using 'express' template");
 	console.log("  add --package '[hooks]'            - Create 'hooks' package using 'hooks' template");
 	console.log("  add --app '[nextjs]'               - Create 'nextjs' app using 'nextjs' template");
+	console.log("");
+	console.log("Interactive Mode:");
+	console.log("  When using 'create' in interactive mode, bracket notation also works:");
+	console.log("  'myapp[nextjs], api[express]'      - Creates apps with specified templates");
+	console.log("  'frontend, backend[hono]'          - Mixed: one interactive, one with template");
 }
 
 main();
