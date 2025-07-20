@@ -105,7 +105,7 @@ async function updatePackageJson(
 
 	// Add workspace dependencies if they exist
 	if (dependencyPackages.length > 0) {
-		const baseProjectName = packageName.split("/")[0].replace("@", "");
+		const baseProjectName = packageName.split("/")[0]?.replace("@", "");
 
 		packageJson.dependencies = {
 			...packageJson.dependencies,

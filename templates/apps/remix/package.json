@@ -21,7 +21,7 @@
 		"@types/react": "^19",
 		"@types/react-dom": "^19",
 		"typescript": "^5",
-		"vite": "^7"
+		"vite": "^5"
 	},
 	"engines": {
 		"node": ">=20.0.0"

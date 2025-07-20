@@ -3,39 +3,12 @@
  */
 
 /**
- * Deep merge two objects
- */
-// biome-ignore lint/suspicious/noExplicitAny: Generic object merging requires any
-export function deepMerge<T extends Record<string, any>>(target: T, source: Partial<T>): T {
-	const result = { ...target };
-
-	for (const key in source) {
-		if (Object.hasOwn(source, key)) {
-			const sourceValue = source[key];
-			const targetValue = result[key];
-
-			if (
-				typeof sourceValue === "object" &&
-				sourceValue !== null &&
-				!Array.isArray(sourceValue) &&
-				typeof targetValue === "object" &&
-				targetValue !== null &&
-				!Array.isArray(targetValue)
-			) {
-				result[key] = deepMerge(targetValue, sourceValue);
-			} else {
-				result[key] = sourceValue;
-			}
-		}
-	}
-
-	return result;
-}
-
-/**
  * Pick specific keys from an object
  */
-export function pick<T, K extends keyof T>(obj: T, keys: K[]): Pick<T, K> {
+export function pick<T extends Record<string | number | symbol, unknown>, K extends keyof T>(
+	obj: T,
+	keys: K[],
+): Pick<T, K> {
 	const result = {} as Pick<T, K>;
 	keys.forEach((key) => {
 		if (key in obj) {
@@ -84,23 +57,4 @@ export function get(obj: any, path: string, defaultValue?: any): any {
 	}
 
 	return result !== undefined ? result : defaultValue;
-}
-
-/**
- * Set nested value in object using dot notation
- */
-// biome-ignore lint/suspicious/noExplicitAny: Generic object mutation requires any
-export function set(obj: any, path: string, value: any): void {
-	const keys = path.split(".");
-	let current = obj;
-
-	for (let i = 0; i < keys.length - 1; i++) {
-		const key = keys[i];
-		if (current[key] === undefined || current[key] === null) {
-			current[key] = {};
-		}
-		current = current[key];
-	}
-
-	current[keys[keys.length - 1]] = value;
 }

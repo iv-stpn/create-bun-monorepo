@@ -449,15 +449,7 @@ async function createApp(
 
 	// Convert existing packages to PackageTemplate format for processing
 	const packagesForProcessing =
-		allPackages ||
-		existingPackages.map(
-			(name) =>
-				({
-					name,
-					template: "unknown",
-					category: "packages",
-				}) as PackageTemplate,
-		);
+		allPackages || existingPackages.map((name) => ({ name, template: "unknown", category: "packages" }));
 
 	try {
 		process.chdir(parentDir);
@@ -552,6 +544,8 @@ function getCategoryTemplateChoices(
 	categoryKey: string,
 ): Array<{ title: string; description: string; value: string }> {
 	const category = config.categories[categoryKey];
+	if (!category) throw new Error(`Category '${categoryKey}' not found in templates config`);
+
 	return Object.entries(category.templates).map(([templateKey, template]) => ({
 		title: template.name,
 		description: template.description,

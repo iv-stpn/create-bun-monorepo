@@ -8,7 +8,7 @@
  *   bun run scripts/template-query.ts "package_templates"
  */
 
-import { getTemplateConfig } from "../src/templates-config";
+import { getTemplateConfig } from "../src/templates";
 
 const [, , query] = process.argv;
 

@@ -127,7 +127,7 @@ function parseFlags(args: string[]): ParsedFlags {
 	for (let i = 0; i < args.length; i++) {
 		const arg = args[i];
 
-		if (arg.startsWith("--")) {
+		if (arg?.startsWith("--")) {
 			const flagName = arg.substring(2);
 			const nextArg = args[i + 1];
 
@@ -162,7 +162,8 @@ function parseNameAndTemplate(input: string): { name: string; template?: string 
 		const [, namePrefix, template] = match;
 		// If no name prefix (e.g., "[hooks]"), use template as name
 		const name = namePrefix || template;
-		return { name: name.trim(), template: template.trim() };
+		if (!name) throw new Error("Invalid input format. Please provide a valid name or template.");
+		return { name: name.trim(), template: template?.trim() };
 	}
 
 	return { name: input.trim() };

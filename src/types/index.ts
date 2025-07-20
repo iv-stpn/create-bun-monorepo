@@ -1,5 +1,5 @@
 /**
- * Type definitions for create-bun-monorepo
+ * Type definitions for the create-bun-monorepo
  */
 
 export interface AppTemplate {

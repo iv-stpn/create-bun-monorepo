@@ -10,7 +10,7 @@
  *   bun run scripts/json-query.ts "package_templates" --format=text
  */
 
-import { getTemplateConfig } from "../src/templates-config";
+import { getTemplateConfig } from "../src/templates";
 
 const args = process.argv.slice(2);
 const query = args[0];

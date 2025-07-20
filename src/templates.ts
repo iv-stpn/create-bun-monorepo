@@ -1,5 +1,5 @@
 /**
- * Template configuration for create-bun-monorepo
+ * Template configuration for the create-bun-monorepo
  */
 
 interface TemplateInfo {
@@ -135,9 +135,9 @@ const TEMPLATES_CONFIG: TemplatesConfig = {
 } as const;
 
 // Full-stack frameworks that can use ORMs (even though they're in frontend category)
-export const FULLSTACK_FRAMEWORKS = ["nextjs", "nextjs-solito", "remix"];
-export const BACKEND_FRAMEWORKS = Object.keys(TEMPLATES_CONFIG.categories.backend.templates);
-export const MOBILE_FRAMEWORKS = Object.keys(TEMPLATES_CONFIG.categories.mobile.templates);
+const FULLSTACK_FRAMEWORKS = ["nextjs", "nextjs-solito", "remix"];
+const BACKEND_FRAMEWORKS = ["express", "hono", "nestjs"];
+const MOBILE_FRAMEWORKS = ["react-native-expo", "react-native-bare"];
 
 export const ORM_FRAMEWORKS = [...FULLSTACK_FRAMEWORKS, ...BACKEND_FRAMEWORKS];
 export const NATIVE_FRAMEWORKS = [...MOBILE_FRAMEWORKS, "nextjs-solito"];

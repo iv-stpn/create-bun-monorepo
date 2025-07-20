@@ -105,6 +105,8 @@ interface ReleaseOptions {
 	autoChangeset: boolean;
 }
 
+const isReleaseType = (type: string): type is "patch" | "minor" | "major" => ["patch", "minor", "major"].includes(type);
+
 function parseArgs(): ReleaseOptions {
 	const args = process.argv.slice(2);
 	const options: ReleaseOptions = {
@@ -122,16 +124,21 @@ function parseArgs(): ReleaseOptions {
 			case "-t":
 			case "--type": {
 				const type = args[i + 1];
-				if (!["patch", "minor", "major"].includes(type)) {
+				if (!type) throw new Error("Missing value for --type option");
+
+				if (!isReleaseType(type)) {
 					printError(`Invalid change type: ${type}. Must be patch, minor, or major.`);
 					process.exit(1);
 				}
-				options.type = type as "patch" | "minor" | "major";
+				options.type = type;
 				break;
 			}
 			case "-m":
 			case "--message": {
-				options.message = args[i + 1];
+				const message = args[i + 1];
+				if (!message) throw new Error("Missing value for --message option");
+
+				options.message = message;
 				break;
 			}
 			case "-f":

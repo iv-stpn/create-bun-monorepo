@@ -77,6 +77,7 @@ async function promptUser(): Promise<CreateOptions> {
 			if (!match) throw new Error(`Invalid app format: ${input}. Expected format: name or name[template]`);
 
 			const [, name, templateSpec] = match;
+			if (!name) throw new Error(`Invalid app name: ${input}. Name cannot be empty.`);
 
 			// No template specified, use blank
 			if (!templateSpec) return { name, template: "blank", category: "blank" };
@@ -98,6 +99,7 @@ async function promptUser(): Promise<CreateOptions> {
 			if (!match) throw new Error(`Invalid package format: ${input}. Expected format: name or name[template]`);
 
 			const [, name, templateSpec] = match;
+			if (!name) throw new Error(`Invalid package name: ${input}. Name cannot be empty.`);
 
 			// No template specified, use blank
 			if (!templateSpec) return { name, template: "blank", category: "blank" };
@@ -559,6 +561,8 @@ function getCategoryTemplateChoices(
 	categoryKey: string,
 ): Array<{ title: string; description: string; value: string }> {
 	const category = config.categories[categoryKey];
+	if (!category) throw new Error(`Category '${categoryKey}' not found in templates config`);
+
 	return Object.entries(category.templates).map(([templateKey, template]) => ({
 		title: template.name,
 		description: template.description,

@@ -1,12 +1,10 @@
 {
-	"include": ["remix.env.d.ts", "**/*.ts", "**/*.tsx"],
+	"extends": "../../tsconfig.base.json",
 	"compilerOptions": {
 		"lib": ["DOM", "DOM.Iterable", "ES6"],
 		"isolatedModules": true,
 		"esModuleInterop": true,
 		"jsx": "react-jsx",
-		"moduleResolution": "bundler",
-		"resolveJsonModule": true,
 		"target": "ES2022",
 		"strict": true,
 		"allowJs": true,
@@ -17,5 +15,7 @@
 			"~/*": ["./app/*"]
 		},
 		"noEmit": true
-	}
+	},
+	"include": ["remix.env.d.ts", "**/*.ts", "**/*.tsx"],
+	"exclude": ["node_modules", "dist"]
 }

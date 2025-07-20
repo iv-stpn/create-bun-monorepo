@@ -28,17 +28,14 @@ export function uniqueBy<T>(arr: T[], key: keyof T): T[] {
  * Group array by key
  */
 export function groupBy<T>(arr: T[], key: keyof T): Record<string, T[]> {
-	return arr.reduce(
-		(groups, item) => {
-			const value = String(item[key]);
-			if (!groups[value]) {
-				groups[value] = [];
-			}
-			groups[value].push(item);
-			return groups;
-		},
-		{} as Record<string, T[]>,
-	);
+	return arr.reduce<Record<string, T[]>>((groups, item) => {
+		const value = String(item[key]);
+		if (!groups[value]) {
+			groups[value] = [];
+		}
+		groups[value].push(item);
+		return groups;
+	}, {});
 }
 
 /**
@@ -103,6 +100,7 @@ export function shuffle<T>(arr: T[]): T[] {
 	const result = [...arr];
 	for (let i = result.length - 1; i > 0; i--) {
 		const j = Math.floor(Math.random() * (i + 1));
+		// @ts-expect-error - unchecked index access
 		[result[i], result[j]] = [result[j], result[i]];
 	}
 	return result;

@@ -1,6 +1,6 @@
 # Release Guide
 
-This document outlines the release process for create-bun-monorepo.
+This document outlines the release process for the create-bun-monorepo.
 
 ## Automated Release (Recommended)
 
