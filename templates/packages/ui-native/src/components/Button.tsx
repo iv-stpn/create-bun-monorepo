@@ -1,7 +1,7 @@
-import type React from "react";
+import type { ReactNode } from "react";
 import { ActivityIndicator, StyleSheet, Text, type TextStyle, TouchableOpacity, type ViewStyle } from "react-native";
 
-export interface ButtonProps {
+export type ButtonProps = {
 	title: string;
 	onPress: () => void;
 	variant?: "primary" | "secondary" | "outline";
@@ -10,9 +10,9 @@ export interface ButtonProps {
 	loading?: boolean;
 	style?: ViewStyle;
 	textStyle?: TextStyle;
-}
+};
 
-export const Button: React.FC<ButtonProps> = ({
+export function Button({
 	title,
 	onPress,
 	variant = "primary",
@@ -21,7 +21,7 @@ export const Button: React.FC<ButtonProps> = ({
 	loading = false,
 	style,
 	textStyle,
-}) => {
+}: ButtonProps): ReactNode {
 	const buttonStyle = [
 		styles.button,
 		styles[`button_${variant}`],
@@ -47,7 +47,7 @@ export const Button: React.FC<ButtonProps> = ({
 			)}
 		</TouchableOpacity>
 	);
-};
+}
 
 const styles = StyleSheet.create({
 	button: {

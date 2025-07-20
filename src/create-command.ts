@@ -3,18 +3,20 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import chalk from "chalk";
 import prompts from "prompts";
+import { rootPath } from "./constants";
 import { addDockerCompose } from "./injections";
+import { createOrmConfig, createOrmSetup, getOrmDependencies, getOrmScripts } from "./lib/orm-setup";
 import {
 	createAppWithProcessing,
 	createPackageWithProcessing,
 	findTemplateInConfig,
 	getAvailableTemplates,
 	getPackageTemplateChoices,
-} from "./lib";
-import type { TemplatesConfig } from "./templates-config";
-import { getTemplateConfig, ORM_FRAMEWORKS } from "./templates-config";
+} from "./lib/shared-setup";
+import type { TemplatesConfig } from "./templates";
+import { getTemplateConfig, ORM_FRAMEWORKS } from "./templates";
 import type { AppTemplate, OrmConfig, PackageTemplate, ScaffoldOptions } from "./types";
-import { createOrmConfig, createOrmSetup, getOrmDependencies, getOrmScripts, writeJsonFile } from "./utils";
+import { writeJsonFile } from "./utils/file";
 
 // Get the directory of the current module
 const __filename = fileURLToPath(import.meta.url);
@@ -416,7 +418,7 @@ async function createRootTsConfig(appName: string, apps: AppTemplate[], packages
 	await writeJsonFile(join(appName, "tsconfig.json"), rootTsConfig);
 
 	// Copy base tsconfig for apps
-	const baseTsConfigPath = join(__dirname, "..", "templates", "tsconfig.base.json");
+	const baseTsConfigPath = join(rootPath, "templates", "tsconfig.base.json");
 	const baseTsConfig = await readFile(baseTsConfigPath, "utf-8");
 	await writeFile(join(appName, "tsconfig.base.json"), baseTsConfig, { encoding: "utf-8" });
 }
@@ -437,8 +439,8 @@ async function createLintingConfig(
 
 	if (linting === "biome") {
 		// Copy the biome.json from the root as a template
-		const rootBiomeConfigPath = join(__dirname, "..", "biome.json");
-		const vscodePath = join(__dirname, "..", ".vscode");
+		const rootBiomeConfigPath = join(rootPath, "biome.json");
+		const vscodePath = join(rootPath, ".vscode");
 
 		// Copy biome.json from root
 		const biomeConfig = await readFile(rootBiomeConfigPath, "utf-8");

@@ -77,30 +77,13 @@ async function injectReactUIDemo(appPath: string, projectName: string): Promise<
 	try {
 		const content = await readFile(appFilePath, "utf-8");
 
-		// Check if this looks like the default template
-		if (!content.includes("count is {count}") || !content.includes("import { useState }")) {
-			console.warn(chalk.yellow(`Skipping UI injection for ${appFilePath} - template structure not as expected`));
-			return;
-		}
-
 		const updatedContent = content
 			.replace(
 				REACT_IMPORT_REGEX,
-				`import { useState } from "react";
-// UI package import - remove this line if @${projectName}/ui is not available
-// import { Button } from "@${projectName}/ui";`,
+				`import { Button } from "@${projectName}/ui";
+import { useState } from "react";`,
 			)
-			.replace(
-				REACT_BUTTON_REGEX,
-				`{/* Replace with UI component when ready:
-				<Button onClick={() => setCount((count) => count + 1)}>
-					count is {count}
-				</Button>
-				*/}
-				<button type="button" onClick={() => setCount((count) => count + 1)}>
-					count is {count}
-				</button>`,
-			);
+			.replace(REACT_BUTTON_REGEX, `<Button onClick={() => setCount((count) => count + 1)}>count is {count}</Button>`);
 
 		await writeFile(appFilePath, updatedContent, "utf-8");
 	} catch (error) {
@@ -116,34 +99,13 @@ async function injectNextJSUIDemo(appPath: string, projectName: string): Promise
 	try {
 		const content = await readFile(pageFilePath, "utf-8");
 
-		// Check if this looks like the default template - only inject if it has the expected structure
-		if (!content.includes("onClick={() => setCount(count + 1)}") || !content.includes("import { useState }")) {
-			console.warn(chalk.yellow(`Skipping UI injection for ${pageFilePath} - template structure not as expected`));
-			return;
-		}
-
 		const updatedContent = content
 			.replace(
 				REACT_IMPORT_REGEX,
-				`import { useState } from "react";
-// UI package import - remove this line if @${projectName}/ui is not available
-// import { Button } from "@${projectName}/ui";`,
+				`import { Button } from "@${projectName}/ui";
+import { useState } from "react";`,
 			)
-			.replace(
-				WEBPACK_BUTTON_REGEX,
-				`{/* Replace with UI component when ready:
-					<Button onClick={() => setCount(count + 1)}>
-						Count: {count}
-					</Button>
-					*/}
-					<button
-						type="button"
-						onClick={() => setCount(count + 1)}
-						className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
-					>
-						Count: {count}
-					</button>`,
-			);
+			.replace(WEBPACK_BUTTON_REGEX, `<Button onClick={() => setCount(count + 1)}>Count: {count}</Button>`);
 
 		await writeFile(pageFilePath, updatedContent, "utf-8");
 	} catch (error) {
@@ -162,9 +124,9 @@ async function injectNextJSSolitoUIDemo(appPath: string, projectName: string): P
 		const updatedContent = content
 			.replace(
 				SOLITO_LINK_REGEX,
-				`import { Link } from "solito/link";
-import { useState } from "react";
-import { Button } from "@${projectName}/ui-native";`,
+				`import { Button } from "@${projectName}/ui-native";
+import { Link } from "solito/link";
+import { useState } from "react";`,
 			)
 			.replace(
 				SOLITO_HOME_REGEX,
@@ -175,9 +137,7 @@ import { Button } from "@${projectName}/ui-native";`,
 				SOLITO_DIV_REGEX,
 				`<div className="mb-8">
 					<h2 className="text-2xl font-semibold mb-4">UI Component Demo</h2>
-					<Button onPress={() => setCount(count + 1)}>
-						Count: {count}
-					</Button>
+					<Button onPress={() => setCount(count + 1)}>Count: {count}</Button>
 				</div>
 
 				<div className="flex gap-4 justify-center">`,
@@ -200,9 +160,9 @@ async function injectRemixUIDemo(appPath: string, projectName: string): Promise<
 		const updatedContent = content
 			.replace(
 				REMIX_META_REGEX,
-				`import type { MetaFunction } from "@remix-run/node";
-import { useState } from "react";
-import { Button } from "@${projectName}/ui";`,
+				`import { Button } from "@${projectName}/ui";
+import type { MetaFunction } from "@remix-run/node";
+import { useState } from "react";`,
 			)
 			.replace(
 				REMIX_INDEX_REGEX,
@@ -215,9 +175,7 @@ import { Button } from "@${projectName}/ui";`,
 				REMIX_UL_REGEX,
 				`<div style={{ marginBottom: "2rem" }}>
 				<h2>UI Component Demo</h2>
-				<Button onClick={() => setCount((count) => count + 1)}>
-					count is {count}
-				</Button>
+				<Button onClick={() => setCount((count) => count + 1)}>Count is {count}</Button>
 			</div>
 			<ul>`,
 			);
@@ -245,14 +203,13 @@ async function injectReactNativeUIDemo(appPath: string, projectName: string): Pr
 		const updatedContent = content
 			.replace(
 				REACT_IMPORT_REGEX,
-				`import { useState } from "react";
-import { Button } from "@${projectName}/ui-native";`,
+				`import { Button } from "@${projectName}/ui-native";
+import { useState } from "react";`,
 			)
 			.replace(
 				RN_TOUCHABLE_REGEX,
-				`<Button onPress={() => setCount(count + 1)}>
-					Count: {count}
-				</Button>`,
+				`<TouchableOpacity onPress={() => setCount(count + 1)}><Text>Count: {count}</Text></TouchableOpacity>
+<Button onPress={() => setCount(count + 1)}>Count: {count}</Button>`,
 			);
 
 		await writeFile(appFilePath, updatedContent, "utf-8");

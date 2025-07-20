@@ -1,11 +1,13 @@
 import { cp, mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { rootPath } from "../constants";
 import { addOrmEndpoints, injectUIComponentDemos } from "../injections";
-import type { TemplatesConfig } from "../templates-config";
-import { getTemplateConfig, NATIVE_FRAMEWORKS, ORM_FRAMEWORKS, REACT_FRAMEWORKS } from "../templates-config";
+import type { TemplatesConfig } from "../templates";
+import { getTemplateConfig, NATIVE_FRAMEWORKS, ORM_FRAMEWORKS, REACT_FRAMEWORKS } from "../templates";
 import type { AppTemplate, OrmConfig, PackageTemplate } from "../types";
-import { processTemplateReplacements, toCamelCase, writeJsonFile } from "../utils";
+import { processTemplateReplacements, writeJsonFile } from "../utils/file";
+import { toCamelCase } from "../utils/string";
 
 // Get current file directory for template path resolution
 const __filename = fileURLToPath(import.meta.url);
@@ -67,7 +69,7 @@ async function copyTemplateFiles(
 	const templateInfo = templateConfig.categories[category]?.templates[template];
 
 	if (!templateInfo?.path) throw new Error(`Template ${template} in category ${category} not found`);
-	const templatePath = join(__dirname, "../templates", templateInfo.path);
+	const templatePath = join(rootPath, "templates", templateInfo.path);
 
 	// Copy all files except node_modules and dist
 	await cp(templatePath, targetPath, {

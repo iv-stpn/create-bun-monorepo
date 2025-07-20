@@ -1,15 +1,15 @@
-import type React from "react";
+import type { ReactNode } from "react";
 import { Image, type ImageStyle, StyleSheet, Text, View, type ViewStyle } from "react-native";
 
-export interface AvatarProps {
+export type AvatarProps = {
 	source?: { uri: string } | number;
 	size?: "small" | "medium" | "large" | "xlarge";
 	fallbackText?: string;
 	style?: ViewStyle;
 	imageStyle?: ImageStyle;
-}
+};
 
-export const Avatar: React.FC<AvatarProps> = ({ source, size = "medium", fallbackText, style, imageStyle }) => {
+export function Avatar({ source, size = "medium", fallbackText, style, imageStyle }: AvatarProps): ReactNode {
 	const containerStyle = [styles.container, styles[`container_${size}`], style];
 
 	const avatarImageStyle = [styles.image, styles[`image_${size}`], imageStyle];
@@ -42,7 +42,7 @@ export const Avatar: React.FC<AvatarProps> = ({ source, size = "medium", fallbac
 			</View>
 		</View>
 	);
-};
+}
 
 const styles = StyleSheet.create({
 	container: {

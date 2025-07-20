@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { useState } from "react";
 import { SafeAreaView, StatusBar, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from "react-native";
 
@@ -11,7 +12,7 @@ const Colors = {
 	white: "#FFF",
 };
 
-function App(): JSX.Element {
+function App(): ReactNode {
 	const isDarkMode = useColorScheme() === "dark";
 	const [count, setCount] = useState(0);
 

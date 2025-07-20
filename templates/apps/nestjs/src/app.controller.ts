@@ -1,5 +1,6 @@
 import { Controller, Get } from "@nestjs/common";
-import type { AppService } from "./app.service";
+// biome-ignore lint/style/useImportType: AppService is used for dependency injection at runtime
+import { AppService } from "./app.service";
 
 @Controller()
 export class AppController {

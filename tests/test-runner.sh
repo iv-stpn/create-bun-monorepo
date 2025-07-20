@@ -64,18 +64,23 @@ cleanup_test_environment() {
         rm -rf "$TEST_OUTPUT_DIR" 2>/dev/null || true
     fi
     
-    # Kill any remaining processes
+    # Kill any remaining processes silently
     if [ -n "$SERVER_PIDS_LIST" ]; then
+        set +m  # Disable job control messages
         for pid in $SERVER_PIDS_LIST; do
-            kill "$pid" 2>/dev/null || true
+            { kill "$pid" && wait "$pid"; } 2>/dev/null || true
         done
+        set -m  # Re-enable job control
     fi
     
-    pkill -f "bun run dev" 2>/dev/null || true
-    pkill -f "node.*dev" 2>/dev/null || true
-    pkill -f "next dev" 2>/dev/null || true
-    pkill -f "vite" 2>/dev/null || true
-    pkill -f "expo" 2>/dev/null || true
+    # Clean up any remaining dev processes
+    {
+        pkill -f "bun run dev\|bun run web:dev" 2>/dev/null || true
+        pkill -f "node.*dev" 2>/dev/null || true
+        pkill -f "next dev" 2>/dev/null || true
+        pkill -f "vite" 2>/dev/null || true
+        pkill -f "expo" 2>/dev/null || true
+    } 2>/dev/null
 }
 
 # Docker Compose management for database
@@ -303,25 +308,45 @@ get_app_port() {
     local app_dir="$1"
     local app_name=$(basename "$app_dir")
     
-    # Check package.json for port hints
+    # Check package.json for port hints - order matters for specificity
     if grep -q "vite" "$app_dir/package.json" 2>/dev/null; then
         echo "3000"
-    elif grep -q "next.*dev.*-p 3002" "$app_dir/package.json" 2>/dev/null; then
-        echo "3002"
+    elif grep -q "next.*dev.*-p" "$app_dir/package.json" 2>/dev/null; then
+        # Extract the port number from the Next.js dev command
+        local port=$(grep -o "next dev -p [0-9]\+" "$app_dir/package.json" 2>/dev/null | grep -o "[0-9]\+" | head -1)
+        if [ -n "$port" ]; then
+            echo "$port"
+        else
+            echo "3000"
+        fi
     elif grep -q "remix" "$app_dir/package.json" 2>/dev/null; then
         echo "3003"
+    elif grep -q "nestjs" "$app_dir/package.json" 2>/dev/null; then
+        echo "3101"
     elif grep -q "express" "$app_dir/package.json" 2>/dev/null; then
         echo "3100"
     elif grep -q "hono" "$app_dir/package.json" 2>/dev/null; then
         echo "8000"
-    elif grep -q "nestjs" "$app_dir/package.json" 2>/dev/null; then
-        echo "3101"
     elif grep -q "expo" "$app_dir/package.json" 2>/dev/null; then
         echo "8081"
     elif grep -q "react-native" "$app_dir/package.json" 2>/dev/null; then
         echo "8080"
+    elif grep -q "webpack" "$app_dir/package.json" 2>/dev/null; then
+        echo "3001"
     else
         echo "3000"  # Default
+    fi
+}
+
+# Get the correct dev script command for app type
+get_dev_script() {
+    local app_dir="$1"
+    
+    # React Native templates use web:dev for web development
+    if grep -q "react-native-expo\|react-native-bare" "$app_dir/package.json" 2>/dev/null; then
+        echo "web:dev"
+    else
+        echo "dev"
     fi
 }
 
@@ -339,6 +364,7 @@ run_e2e_tests() {
         if [ -d "$app_dir" ]; then
             local app_name=$(basename "$app_dir")
             local expected_port=$(get_app_port "$app_dir")
+            local dev_script=$(get_dev_script "$app_dir")
             
             # Copy .env file to app directory for environment variable access
             if [ -f "$project_dir/.env" ]; then
@@ -349,26 +375,41 @@ run_e2e_tests() {
             
             log_info "Testing E2E for $app_name on port $expected_port..."
             
-            # Start dev server in background
-            timeout 45 bun run dev > "/tmp/e2e-$app_name-$scenario_name.log" 2>&1 &
+            # Start dev server in background (suppress job control messages)
+            set +m  # Disable job control to suppress termination messages
+            timeout 45 bun run "$dev_script" > "/tmp/e2e-$app_name-$scenario_name.log" 2>&1 &
             local server_pid=$!
+            set -m  # Re-enable job control
             
             # Store PID for cleanup (simple list)
             SERVER_PIDS_LIST="$SERVER_PIDS_LIST $server_pid"
             
-            # Wait for server to start
-            sleep 5
+            # Wait for server to start - longer for webpack-based apps
+            if grep -q "webpack" "$project_dir/$app_dir/package.json" 2>/dev/null; then
+                sleep 10  # Webpack needs more time to compile
+            else
+                sleep 5
+            fi
             
-            # Test server response
-            if test_server_response "$expected_port" 6 3; then
+            # Test server response - more retries for webpack apps
+            local retries=6
+            local delay=3
+            if grep -q "webpack" "$project_dir/$app_dir/package.json" 2>/dev/null; then
+                retries=10  # More retries for webpack
+                delay=2     # Shorter delay, more attempts
+            fi
+            
+            if test_server_response "$expected_port" "$retries" "$delay"; then
                 log_success "E2E test passed for $app_name"
-                kill $server_pid 2>/dev/null || true
+                # Cleanup server process silently
+                { kill $server_pid && wait $server_pid; } 2>/dev/null || true
                 # Remove PID from list
                 SERVER_PIDS_LIST=$(echo "$SERVER_PIDS_LIST" | sed "s/ $server_pid//g")
                 sleep 1
             else
                 log_error "E2E test failed for $app_name"
-                kill $server_pid 2>/dev/null || true
+                # Cleanup server process silently
+                { kill $server_pid && wait $server_pid; } 2>/dev/null || true
                 # Remove PID from list
                 SERVER_PIDS_LIST=$(echo "$SERVER_PIDS_LIST" | sed "s/ $server_pid//g")
                 log_info "Server logs for $app_name:"
@@ -387,6 +428,7 @@ start_playwright_server() {
     local app_name="$1"
     local app_path="$2"
     local expected_port="$3"
+    local dev_script=$(get_dev_script "$app_path")
     
     log_playwright "Starting server for $app_name on port $expected_port..."
     
@@ -397,9 +439,11 @@ start_playwright_server() {
     
     cd "$app_path"
     
-    # Start dev server in background
-    timeout 120 bun run dev > "/tmp/playwright-server-$app_name.log" 2>&1 &
+    # Start dev server in background (suppress job control messages)
+    set +m  # Disable job control to suppress termination messages
+    timeout 120 bun run "$dev_script" > "/tmp/playwright-server-$app_name.log" 2>&1 &
     local pid=$!
+    set -m  # Re-enable job control
     SERVER_PIDS_LIST="$SERVER_PIDS_LIST $pid"
     
     # Wait for server to be ready
@@ -417,7 +461,7 @@ start_playwright_server() {
     done
     
     log_error "Server failed to start for $app_name on port $expected_port"
-    kill $pid 2>/dev/null || true
+    { kill $pid && wait $pid; } 2>/dev/null || true
     SERVER_PIDS_LIST=$(echo "$SERVER_PIDS_LIST" | sed "s/ $pid//g")
     return 1
 }
@@ -431,9 +475,11 @@ stop_playwright_server() {
     log_playwright "Stopping servers for $app_name"
     
     if [ -n "$SERVER_PIDS_LIST" ]; then
+        set +m  # Disable job control messages
         for pid in $SERVER_PIDS_LIST; do
-            kill "$pid" 2>/dev/null || true
+            { kill "$pid" && wait "$pid"; } 2>/dev/null || true
         done
+        set -m  # Re-enable job control
         SERVER_PIDS_LIST=""
     fi
 }
@@ -545,7 +591,7 @@ test_complete_scenario() {
             # Extract template from format like "web[react-vite]" -> "react-vite"
             if [[ "$app_spec" =~ \[([^]]+)\] ]]; then
                 local template_name="${BASH_REMATCH[1]}"
-                run_playwright_for_template "$template_name" "$project_dir" || true  # Don't fail scenario on Playwright failure
+                run_playwright_for_template "$template_name" "$project_dir" || return 1
             fi
         done
     fi
@@ -584,11 +630,11 @@ test_all_templates() {
         
         # Create simple project with this template
         local project_dir
-        project_dir=$(create_test_project "template-$template" "app[$template]" "ui" "prisma") || continue
+        project_dir=$(create_test_project "template-$template" "app[$template]" "ui" "prisma") || return 1
         
         # Quick validation
-        validate_code_quality "$project_dir" "template-$template" || continue
-        run_e2e_tests "$project_dir" "template-$template" || continue
+        validate_code_quality "$project_dir" "template-$template" || return 1
+        run_e2e_tests "$project_dir" "template-$template" || return 1
         
         log_success "Template $template tested successfully"
     done
@@ -789,7 +835,7 @@ main() {
                 "UI packages only + Drizzle ORM" || exit 1
             
             # Then test all individual templates
-            test_all_templates
+            test_all_templates || exit 1
             ;;
             
         "playwright-only")

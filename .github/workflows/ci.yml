@@ -67,12 +67,25 @@ jobs:
         retention-days: 7
     
     - name: Test summary
-      if: always()
+      if: success()
       run: |
         echo "## Test Results" >> $GITHUB_STEP_SUMMARY
-        echo "✅ Unified test suite completed" >> $GITHUB_STEP_SUMMARY
+        echo "✅ Unified test suite completed successfully" >> $GITHUB_STEP_SUMMARY
         echo "- 4 Core scenarios (All packages + UI-only × Prisma/Drizzle)" >> $GITHUB_STEP_SUMMARY
         echo "- Individual template validation (10 templates)" >> $GITHUB_STEP_SUMMARY
         echo "- Code quality checks (TypeScript, lint, build)" >> $GITHUB_STEP_SUMMARY
         echo "- E2E server functionality tests" >> $GITHUB_STEP_SUMMARY
         echo "- Comprehensive integration testing" >> $GITHUB_STEP_SUMMARY
+
+    - name: Test failure summary
+      if: failure()
+      run: |
+        echo "## Test Results" >> $GITHUB_STEP_SUMMARY
+        echo "❌ Test suite failed" >> $GITHUB_STEP_SUMMARY
+        echo "Check the job logs and uploaded artifacts for details." >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Expected validations:**" >> $GITHUB_STEP_SUMMARY
+        echo "- 4 Core scenarios (All packages + UI-only × Prisma/Drizzle)" >> $GITHUB_STEP_SUMMARY
+        echo "- Individual template validation (10 templates)" >> $GITHUB_STEP_SUMMARY
+        echo "- Code quality checks (TypeScript, lint, build)" >> $GITHUB_STEP_SUMMARY
+        echo "- E2E server functionality tests" >> $GITHUB_STEP_SUMMARY

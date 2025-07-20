@@ -1,7 +1,7 @@
-import type React from "react";
+import type { ReactNode } from "react";
 import { StyleSheet, Text, TextInput, type TextInputProps, type TextStyle, View, type ViewStyle } from "react-native";
 
-export interface InputProps extends Omit<TextInputProps, "style"> {
+export type InputProps = Omit<TextInputProps, "style"> & {
 	label?: string;
 	placeholder?: string;
 	value?: string;
@@ -12,9 +12,9 @@ export interface InputProps extends Omit<TextInputProps, "style"> {
 	size?: "small" | "medium" | "large";
 	style?: ViewStyle;
 	inputStyle?: TextStyle;
-}
+};
 
-export const Input: React.FC<InputProps> = ({
+export function Input({
 	label,
 	placeholder,
 	value,
@@ -26,7 +26,7 @@ export const Input: React.FC<InputProps> = ({
 	style,
 	inputStyle,
 	...props
-}) => {
+}: InputProps): ReactNode {
 	const containerStyle = [styles.container, style];
 
 	const inputContainerStyle = [
@@ -56,7 +56,7 @@ export const Input: React.FC<InputProps> = ({
 			{error && <Text style={styles.error}>{error}</Text>}
 		</View>
 	);
-};
+}
 
 const styles = StyleSheet.create({
 	container: {

@@ -1,12 +1,12 @@
-import type React from "react";
+import type { ReactNode } from "react";
 import { StyleSheet, View, type ViewStyle } from "react-native";
 
-export interface CardProps {
-	children: React.ReactNode;
+export type CardProps = {
+	children: ReactNode;
 	variant?: "default" | "elevated" | "outlined";
 	padding?: "none" | "small" | "medium" | "large";
 	style?: ViewStyle;
-}
+};
 
 export const Card: React.FC<CardProps> = ({ children, variant = "default", padding = "medium", style }) => {
 	const cardStyle = [styles.card, styles[`card_${variant}`], styles[`card_${padding}`], style];

@@ -3,11 +3,12 @@ import { join } from "node:path";
 import chalk from "chalk";
 import prompts from "prompts";
 import { addDockerCompose } from "./injections";
-import { createAppWithProcessing, createPackageWithProcessing, getPackageTemplateChoices } from "./lib";
-import type { TemplatesConfig } from "./templates-config";
-import { getTemplateConfig } from "./templates-config";
+import { createOrmConfig, getOrmDependencies, getOrmScripts } from "./lib/orm-setup";
+import { createAppWithProcessing, createPackageWithProcessing, getPackageTemplateChoices } from "./lib/shared-setup";
+import type { TemplatesConfig } from "./templates";
+import { getTemplateConfig } from "./templates";
 import type { AppTemplate, OrmConfig, PackageTemplate } from "./types";
-import { createOrmConfig, getOrmDependencies, getOrmScripts, writeJsonFile } from "./utils";
+import { writeJsonFile } from "./utils/file";
 
 interface PackageJsonStructure {
 	workspaces?: string[];
