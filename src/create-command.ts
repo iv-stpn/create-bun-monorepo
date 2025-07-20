@@ -36,11 +36,33 @@ export async function create() {
 	if (options.linting !== "none") console.log(chalk.yellow("  bun run format"));
 }
 
+const isOrmType = (value: string | undefined): value is "prisma" | "drizzle" | "none" | undefined =>
+	!value || ["prisma", "drizzle", "none"].includes(value);
+
+const isDatabaseType = (value: string | undefined): value is "postgresql" | "mysql" | "sqlite" | undefined =>
+	!value || ["postgresql", "mysql", "sqlite"].includes(value);
+
+const isLintingType = (value: string | undefined): value is "biome" | "eslint-prettier" | "none" | undefined =>
+	!value || ["biome", "eslint-prettier", "none"].includes(value);
+
 async function promptUser(): Promise<CreateOptions> {
 	// Check for non-interactive mode via environment variables
 	const nonInteractive = process.env.NON_INTERACTIVE === "true";
 
 	if (nonInteractive) {
+		// Check the values of environment variables for non-interactive mode
+		const lintingMode = process.env.LINTING;
+		if (!isLintingType(lintingMode))
+			throw new Error(`Invalid LINTING value: ${lintingMode}. Expected 'biome', 'eslint-prettier', or 'none'.`);
+
+		const ormType = process.env.ORM_TYPE;
+		if (!isOrmType(ormType))
+			throw new Error(`Invalid ORM_TYPE value: ${ormType}. Expected 'prisma', 'drizzle', or 'none'.`);
+
+		const database = process.env.DATABASE;
+		if (!isDatabaseType(database))
+			throw new Error(`Invalid DATABASE value: ${database}. Expected 'postgresql', 'mysql', or 'sqlite'.`);
+
 		// In non-interactive mode, parse templates from square brackets
 		const templateConfig = getTemplateConfig();
 		const appInputs = (process.env.APPS || "web,api").split(",").map((app) => app.trim());
@@ -102,8 +124,6 @@ async function promptUser(): Promise<CreateOptions> {
 
 		// Parse ORM configuration from environment variables
 		let orm: OrmConfig | undefined;
-		const ormType = process.env.ORM_TYPE as "prisma" | "drizzle" | undefined;
-		const database = process.env.DATABASE as "postgresql" | "mysql" | "sqlite" | undefined;
 
 		if (ormType && database) {
 			orm = createOrmConfig(ormType, database);
@@ -111,7 +131,7 @@ async function promptUser(): Promise<CreateOptions> {
 
 		return {
 			appName: process.env.APP_NAME || "my-test-app",
-			linting: (process.env.LINTING as "biome" | "eslint-prettier" | "none") || "biome",
+			linting: lintingMode || "biome",
 			apps,
 			packages,
 			orm,

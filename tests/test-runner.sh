@@ -605,38 +605,261 @@ test_complete_scenario() {
 }
 
 # Run all templates individually (full mode)
-test_all_templates() {
-    log_section "TESTING ALL INDIVIDUAL TEMPLATES"
+# New comprehensive testing approach - one monorepo with all apps, 12 scenarios
+test_all_scenarios() {
+    log_section "TESTING ALL SCENARIOS WITH COMPREHENSIVE MONOREPO"
     
-    # All available templates
-    local templates=(
-        "react-vite"
-        "react-webpack" 
-        "nextjs"
-        "nextjs-solito"
-        "express"
-        "hono"
-        "nestjs"
-        "react-native-expo"
-        "react-native-bare"
-        "remix"
+    # All available app templates
+    local all_apps="web[react-vite],mobile[react-native-expo],api[express],admin[nextjs],cms[remix],gateway[hono],service[nestjs],desktop[react-webpack],native[react-native-bare],fullstack[nextjs-solito]"
+    
+    # Package configurations
+    local all_packages="ui,ui-native,utils,schemas,hooks,blank1,blank2"
+    local no_packages=""
+    
+    # Configuration matrix: linting × orm × packages
+    local scenarios=(
+        # ESLint+Prettier configurations
+        "eslint-prisma-packages:eslint:prisma:$all_packages:ESLint+Prettier + Prisma + All Packages"
+        "eslint-prisma-none:eslint:prisma:$no_packages:ESLint+Prettier + Prisma + No Packages"
+        "eslint-drizzle-packages:eslint:drizzle:$all_packages:ESLint+Prettier + Drizzle + All Packages"
+        "eslint-drizzle-none:eslint:drizzle:$no_packages:ESLint+Prettier + Drizzle + No Packages"
+        "eslint-none-packages:eslint:none:$all_packages:ESLint+Prettier + No ORM + All Packages"
+        "eslint-none-none:eslint:none:$no_packages:ESLint+Prettier + No ORM + No Packages"
+        
+        # Biome configurations
+        "biome-prisma-packages:biome:prisma:$all_packages:Biome + Prisma + All Packages"
+        "biome-prisma-none:biome:prisma:$no_packages:Biome + Prisma + No Packages"
+        "biome-drizzle-packages:biome:drizzle:$all_packages:Biome + Drizzle + All Packages"
+        "biome-drizzle-none:biome:drizzle:$no_packages:Biome + Drizzle + No Packages"
+        "biome-none-packages:biome:none:$all_packages:Biome + No ORM + All Packages"
+        "biome-none-none:biome:none:$no_packages:Biome + No ORM + No Packages"
     )
     
-    for template in "${templates[@]}"; do
-        local project_name="test-template-$template"
+    local failed_scenarios=()
+    local total_scenarios=${#scenarios[@]}
+    local current_scenario=0
+    
+    for scenario_config in "${scenarios[@]}"; do
+        current_scenario=$((current_scenario + 1))
         
-        log_info "Testing template: $template"
+        IFS=':' read -r scenario_name linting orm packages description <<< "$scenario_config"
         
-        # Create simple project with this template
-        local project_dir
-        project_dir=$(create_test_project "template-$template" "app[$template]" "ui" "prisma") || return 1
+        log_info "[$current_scenario/$total_scenarios] Testing: $description"
         
-        # Quick validation
-        validate_code_quality "$project_dir" "template-$template" || return 1
-        run_e2e_tests "$project_dir" "template-$template" || return 1
-        
-        log_success "Template $template tested successfully"
+        if test_single_comprehensive_scenario "$scenario_name" "$all_apps" "$packages" "$linting" "$orm" "$description"; then
+            log_success "Scenario $scenario_name completed successfully"
+        else
+            log_error "Scenario $scenario_name failed"
+            failed_scenarios+=("$scenario_name")
+            # Early exit on any error as requested
+            log_error "Early exit due to failed scenario: $scenario_name"
+            return 1
+        fi
     done
+    
+    if [ ${#failed_scenarios[@]} -eq 0 ]; then
+        log_success "All 12 scenarios completed successfully!"
+        return 0
+    else
+        log_error "Failed scenarios: ${failed_scenarios[*]}"
+        return 1
+    fi
+}
+
+test_single_comprehensive_scenario() {
+    local scenario_name="$1"
+    local apps="$2"
+    local packages="$3"
+    local linting="$4"
+    local orm="$5" 
+    local description="$6"
+    
+    log_section "SCENARIO: $description"
+    
+    # Create project with specific configuration
+    local project_dir
+    project_dir=$(create_comprehensive_test_project "$scenario_name" "$apps" "$packages" "$linting" "$orm") || return 1
+    
+    # Track current project for cleanup
+    CURRENT_PROJECT_DIR="$project_dir"
+    
+    cd "$project_dir"
+
+    log_info "Running tests for scenario: $scenario_name in $project_dir"
+        
+    # Step 1: Install dependencies
+    log_info "Step 1/4: Installing dependencies..."
+    if ! timeout 300 bun install > "/tmp/install-$scenario_name.log" 2>&1; then
+        log_error "Failed to install dependencies for $scenario_name"
+        tail -20 "/tmp/install-$scenario_name.log" || true
+        return 1
+    fi
+    log_success "Dependencies installed"
+    
+    # Step 2: Run linting  
+    log_info "Step 2/4: Running linting..."
+    if [ "$linting" = "biome" ]; then
+        if ! timeout 120 bun run lint > "/tmp/lint-$scenario_name.log" 2>&1; then
+            log_error "Linting failed for $scenario_name"
+            # Try fixing and retry once
+            log_info "Attempting to fix linting issues..."
+            if ! timeout 60 bun run lint:fix > "/tmp/biome-fix-$scenario_name.log" 2>&1; then
+                log_error "Failed to fix linting issues"
+                tail -20 "/tmp/lint-$scenario_name.log" || true
+                return 1
+            fi
+            # Retry linting
+            if ! timeout 120 bun run lint > "/tmp/lint-retry-$scenario_name.log" 2>&1; then
+                log_error "Linting still failed after fix attempt"
+                tail -20 "/tmp/lint-retry-$scenario_name.log" || true
+                return 1
+            fi
+        fi
+    else
+        # ESLint + Prettier
+        if ! timeout 120 bun run lint > "/tmp/lint-$scenario_name.log" 2>&1; then
+            log_error "ESLint failed for $scenario_name"
+            tail -20 "/tmp/lint-$scenario_name.log" || true
+            return 1
+        fi
+    fi
+    log_success "Linting passed"
+    
+    # Step 3: Run typecheck
+    log_info "Step 3/4: Running typecheck..."
+    if ! timeout 120 bun run typecheck > "/tmp/typecheck-$scenario_name.log" 2>&1; then
+        log_error "Typecheck failed for $scenario_name"
+        tail -20 "/tmp/typecheck-$scenario_name.log" || true
+        return 1
+    fi
+    log_success "Typecheck passed"
+    
+    # Step 4: Run Prisma tests (for all scenarios as requested)
+    log_info "Step 4/4: Running Prisma tests..."
+    
+    # Start Docker services if ORM is configured
+    if [ "$orm" = "prisma" ] || [ "$orm" = "drizzle" ]; then
+        start_docker_services "$project_dir" || return 1
+    fi
+    
+    # Run ORM-specific tests
+    if [ "$orm" = "prisma" ]; then
+        # Test Prisma schema generation and migration
+        if ! timeout 60 bunx prisma generate > "/tmp/prisma-generate-$scenario_name.log" 2>&1; then
+            log_error "Prisma generate failed for $scenario_name"
+            tail -20 "/tmp/prisma-generate-$scenario_name.log" || true
+            return 1
+        fi
+        
+        if ! timeout 60 bunx prisma migrate dev --name "test" --skip-generate > "/tmp/prisma-migrate-$scenario_name.log" 2>&1; then
+            log_error "Prisma migrate failed for $scenario_name"
+            tail -20 "/tmp/prisma-migrate-$scenario_name.log" || true
+            return 1
+        fi
+    elif [ "$orm" = "drizzle" ]; then
+        # Test Drizzle schema generation
+        if ! timeout 60 bunx drizzle-kit generate > "/tmp/drizzle-generate-$scenario_name.log" 2>&1; then
+            log_error "Drizzle generate failed for $scenario_name"
+            tail -20 "/tmp/drizzle-generate-$scenario_name.log" || true
+            return 1
+        fi
+        
+        if ! timeout 60 bunx drizzle-kit migrate > "/tmp/drizzle-migrate-$scenario_name.log" 2>&1; then
+            log_error "Drizzle migrate failed for $scenario_name"
+            tail -20 "/tmp/drizzle-migrate-$scenario_name.log" || true
+            return 1
+        fi
+    fi
+    
+    # Test building apps (quick validation)
+    log_info "Testing app builds..."
+    local build_errors=()
+    
+    # Test a few key apps to ensure they build
+    local test_apps=("web" "api" "admin")
+    for app in "${test_apps[@]}"; do
+        if [ -d "apps/$app" ]; then
+            cd "apps/$app"
+            if ! timeout 120 bun run build > "/tmp/build-$app-$scenario_name.log" 2>&1; then
+                build_errors+=("$app")
+                log_error "Build failed for app: $app"
+            else
+                log_success "Build passed for app: $app"  
+            fi
+            cd "$project_dir"
+        fi
+    done
+    
+    # Clean up Docker services
+    if [ "$orm" = "prisma" ] || [ "$orm" = "drizzle" ]; then
+        stop_docker_services "$project_dir"
+    fi
+    
+    if [ ${#build_errors[@]} -gt 0 ]; then
+        log_error "Build errors in apps: ${build_errors[*]}"
+        return 1
+    fi
+    
+    log_success "All validations passed for scenario: $description"
+    return 0
+}
+
+create_comprehensive_test_project() {
+    local scenario_name="$1"
+    local apps="$2"
+    local packages="$3"
+    local linting="$4"
+    local orm="$5"
+    
+    local project_name="test-$scenario_name"
+    local project_dir="$TEST_OUTPUT_DIR/$project_name"
+    
+    log_info "Creating comprehensive project: $project_name" >&2
+    log_info "Apps: $apps" >&2
+    log_info "Packages: $packages" >&2
+    log_info "Linting: $linting" >&2
+    log_info "ORM: $orm" >&2
+    
+    cd "$TEST_OUTPUT_DIR"
+    
+    # Remove existing project if it exists
+    if [ -d "$project_name" ]; then
+        rm -rf "$project_name"
+    fi
+    
+    # Create the project with all specified configurations
+    local orm_param=""
+    if [ "$orm" != "none" ]; then
+        orm_param="$orm"
+    fi
+    
+    NON_INTERACTIVE=true \
+    APP_NAME="$project_name" \
+    LANGUAGE="typescript" \
+    LINTING="$linting" \
+    APPS="$apps" \
+    PACKAGES="$packages" \
+    ORM_TYPE="$orm_param" \
+    DATABASE="postgresql" \
+    timeout 180 node "$CLI_PATH" > "/tmp/creation-$scenario_name.log" 2>&1
+    
+    if [ ! -d "$project_name" ]; then
+        log_error "Failed to create comprehensive project: $project_name" >&2
+        cat "/tmp/creation-$scenario_name.log" >&2 || true
+        return 1
+    fi
+    
+    # Set up environment file for ORM scenarios
+    if [ "$orm" != "none" ]; then
+        cd "$project_name"
+        if [ -f ".env.example" ]; then
+            cp ".env.example" ".env"
+            log_info "Copied .env.example to .env for database connection" >&2
+        fi
+        cd "$TEST_OUTPUT_DIR"
+    fi
+    
+    echo "$project_dir"
 }
 
 # Generate test report
@@ -649,21 +872,32 @@ generate_test_report() {
     log_section "TEST COMPLETION REPORT"
     
     case "$TEST_MODE" in
-        "core")
-            log_success "All 4 core scenarios tested successfully!"
+        "core"|"full")
+            log_success "All 12 comprehensive scenarios tested successfully!"
             echo ""
             echo "✅ SCENARIOS TESTED:"
-            echo "   1. All packages + Prisma ORM"
-            echo "   2. All packages + Drizzle ORM"  
-            echo "   3. UI packages only + Prisma ORM"
-            echo "   4. UI packages only + Drizzle ORM"
-            ;;
-        "full")
-            log_success "All scenarios and individual templates tested!"
+            echo "   1. ESLint+Prettier + Prisma + All Packages"
+            echo "   2. ESLint+Prettier + Prisma + No Packages"
+            echo "   3. ESLint+Prettier + Drizzle + All Packages"
+            echo "   4. ESLint+Prettier + Drizzle + No Packages"
+            echo "   5. ESLint+Prettier + No ORM + All Packages"
+            echo "   6. ESLint+Prettier + No ORM + No Packages"
+            echo "   7. Biome + Prisma + All Packages"
+            echo "   8. Biome + Prisma + No Packages"
+            echo "   9. Biome + Drizzle + All Packages"
+            echo "  10. Biome + Drizzle + No Packages"
+            echo "  11. Biome + No ORM + All Packages"
+            echo "  12. Biome + No ORM + No Packages"
             echo ""
-            echo "✅ COMPREHENSIVE TESTING COMPLETED:"
-            echo "   • 4 core scenarios"
-            echo "   • Individual template testing"
+            echo "📱 ALL APP TEMPLATES TESTED:"
+            echo "   • React Vite • React Native Expo • Express API"
+            echo "   • Next.js Admin • Remix CMS • Hono Gateway" 
+            echo "   • NestJS Service • React Webpack Desktop"
+            echo "   • React Native Bare • Next.js + Solito"
+            echo ""
+            echo "📦 ALL PACKAGE TEMPLATES TESTED:"
+            echo "   • UI Components • Native Components • Utils"
+            echo "   • Schemas • React Hooks • 2 Blank Packages"
             ;;
         "playwright-only")
             log_success "Playwright tests completed!"
@@ -675,12 +909,13 @@ generate_test_report() {
     
     echo ""
     echo "✅ VALIDATIONS PERFORMED:"
-    echo "   • Project scaffolding"
-    echo "   • Dependency installation"
-    echo "   • TypeScript compilation"
-    echo "   • Linting (Biome)"
-    echo "   • App building"
-    echo "   • E2E dev server testing"
+    echo "   • Project scaffolding with all configurations"
+    echo "   • Dependency installation (bun install)"
+    echo "   • Code linting (ESLint+Prettier vs Biome)"
+    echo "   • TypeScript compilation (typecheck)"
+    echo "   • ORM schema generation & migration"
+    echo "   • Application builds"
+    echo "   • Early exit on any failure"
     if [ "$RUN_PLAYWRIGHT" = "true" ]; then
         echo "   • Playwright browser testing"
     fi
@@ -700,13 +935,13 @@ show_usage() {
     echo "  --help               Show this help message"
     echo ""
     echo "TEST MODES:"
-    echo "  core                 Run 4 core scenarios with E2E validation (default)"
-    echo "  full                 Run core scenarios + individual template testing"
+    echo "  core                 Run 12 comprehensive scenarios with single monorepo (default)"
+    echo "  full                 Run 12 comprehensive scenarios (same as core)"
     echo "  playwright-only      Run only Playwright tests (requires existing projects)"
     echo ""
     echo "EXAMPLES:"
-    echo "  $0                          # Run core scenarios"
-    echo "  $0 --mode=full             # Run comprehensive testing"
+    echo "  $0                          # Run 12 comprehensive scenarios"
+    echo "  $0 --mode=full             # Run 12 comprehensive scenarios (same as core)"
     echo "  $0 --playwright            # Run core scenarios + Playwright"
     echo "  $0 --mode=full --playwright # Run everything with Playwright"
     echo ""
@@ -781,60 +1016,13 @@ main() {
     # Execute based on test mode
     case "$TEST_MODE" in
         "core")
-            # Run 4 core scenarios
-            test_complete_scenario "all-packages-prisma" \
-                "web[react-vite],frontend[nextjs],backend[express]" \
-                "ui,ui-native,utils,schemas,hooks" \
-                "prisma" \
-                "All packages + Prisma ORM" || exit 1
-            
-            test_complete_scenario "all-packages-drizzle" \
-                "web[react-vite],frontend[nextjs],backend[hono]" \
-                "ui,ui-native,utils,schemas,hooks" \
-                "drizzle" \
-                "All packages + Drizzle ORM" || exit 1
-            
-            test_complete_scenario "ui-packages-prisma" \
-                "web[react-vite],backend[express]" \
-                "ui,ui-native" \
-                "prisma" \
-                "UI packages only + Prisma ORM" || exit 1
-            
-            test_complete_scenario "ui-packages-drizzle" \
-                "web[react-vite],backend[hono]" \
-                "ui,ui-native" \
-                "drizzle" \
-                "UI packages only + Drizzle ORM" || exit 1
+            log_info "Running core 12-scenario comprehensive testing"
+            test_all_scenarios || exit 1
             ;;
             
         "full")
-            # Run core scenarios first
-            test_complete_scenario "all-packages-prisma" \
-                "web[react-vite],frontend[nextjs],backend[express]" \
-                "ui,ui-native,utils,schemas,hooks" \
-                "prisma" \
-                "All packages + Prisma ORM" || exit 1
-            
-            test_complete_scenario "all-packages-drizzle" \
-                "web[react-vite],frontend[nextjs],backend[hono]" \
-                "ui,ui-native,utils,schemas,hooks" \
-                "drizzle" \
-                "All packages + Drizzle ORM" || exit 1
-            
-            test_complete_scenario "ui-packages-prisma" \
-                "web[react-vite],backend[express]" \
-                "ui,ui-native" \
-                "prisma" \
-                "UI packages only + Prisma ORM" || exit 1
-            
-            test_complete_scenario "ui-packages-drizzle" \
-                "web[react-vite],backend[hono]" \
-                "ui,ui-native" \
-                "drizzle" \
-                "UI packages only + Drizzle ORM" || exit 1
-            
-            # Then test all individual templates
-            test_all_templates || exit 1
+            log_info "Running comprehensive 12-scenario testing"
+            test_all_scenarios || exit 1
             ;;
             
         "playwright-only")

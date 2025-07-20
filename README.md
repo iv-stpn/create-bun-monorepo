@@ -43,6 +43,8 @@ npm install -g create-bun-monorepo
 
 ## Usage
 
+### Create a New Monorepo
+
 ```bash
 create-bun-monorepo
 ```
@@ -53,6 +55,31 @@ The CLI will guide you through the setup process:
 2. **Linting**: Select Biome, ESLint+Prettier, or none
 3. **Apps**: Choose from various frontend and backend templates
 4. **Packages**: Select shared packages for your monorepo
+5. **ORM**: Optionally add Prisma or Drizzle ORM
+
+### Add to Existing Monorepo
+
+```bash
+# Add packages and apps interactively
+create-bun-monorepo add
+
+# Add specific packages with template selection
+create-bun-monorepo add --package hooks
+create-bun-monorepo add --package "myutils[utils]"    # Custom name with template
+create-bun-monorepo add --package "[schemas]"         # Use template name
+
+# Add specific apps with template selection  
+create-bun-monorepo add --app "myapi[express]"        # Custom name with template
+create-bun-monorepo add --app "[nextjs]"              # Use template name
+
+# Add ORM setup to existing monorepo
+create-bun-monorepo add --orm
+```
+
+**Template Selection Syntax:**
+- `name[template]` - Create with custom name using specific template
+- `[template]` - Create using template name as the component name
+- `name` - Interactive template selection or blank component
 
 ## Generated Structure
 
@@ -188,32 +215,55 @@ bun run format            # Format code
 
 ## Testing
 
-The project includes a comprehensive, unified test suite that validates all core functionality:
+The project includes a comprehensive, unified test suite that validates all core functionality with **12 comprehensive scenarios**:
 
 **Single Unified Test Runner:**
 ```bash
-# Core testing (default)
-bun run test              # Runs test-runner.sh in core mode
+# Comprehensive testing (default) - tests all 12 scenarios
+bun run test              # Runs test-runner.sh with 12 scenarios
 
-# Extended testing options
-bun run test:full         # All scenarios + individual template testing  
-bun run test:playwright   # Core scenarios + Playwright browser tests
+# Extended testing options  
+bun run test:full         # Same as core - 12 comprehensive scenarios
+bun run test:playwright   # 12 scenarios + Playwright browser tests
 
 # Direct script usage with all options
-./tests/test-runner.sh                    # Core scenarios (same as bun run test)
-./tests/test-runner.sh --mode=full        # Comprehensive testing
-./tests/test-runner.sh --playwright       # Core + Playwright
-./tests/test-runner.sh --mode=full --playwright  # Everything
+./tests/test-runner.sh                    # 12 scenarios (same as bun run test)
+./tests/test-runner.sh --mode=full        # Same as core
+./tests/test-runner.sh --playwright       # 12 scenarios + Playwright
 ```
 
-**What gets tested:**
-- **4 Core Scenarios**: All combinations of package sets (full vs UI-only) and ORMs (Prisma vs Drizzle)
-- **Code Quality**: TypeScript compilation, linting, and building for each generated project
-- **E2E Functionality**: Dev servers start correctly and respond on expected ports
-- **Template Integration**: Proper template copying and configuration
-- **Playwright Tests**: Browser-based testing for frontend templates (when enabled)
+**What gets tested - 12 Comprehensive Scenarios:**
 
-**Test execution takes ~30-60 seconds** and creates temporary projects that are automatically cleaned up.
+Each scenario creates **one monorepo with ALL app templates** and tests different configurations:
+
+**Configuration Matrix (6 linting/ORM combinations × 2 package variants = 12 scenarios):**
+
+1. **ESLint+Prettier + Prisma + All Packages** (ui, ui-native, utils, schemas, hooks + 2 blank)
+2. **ESLint+Prettier + Prisma + No Packages**  
+3. **ESLint+Prettier + Drizzle + All Packages**
+4. **ESLint+Prettier + Drizzle + No Packages**
+5. **ESLint+Prettier + No ORM + All Packages**
+6. **ESLint+Prettier + No ORM + No Packages**
+7. **Biome + Prisma + All Packages**
+8. **Biome + Prisma + No Packages**
+9. **Biome + Drizzle + All Packages** 
+10. **Biome + Drizzle + No Packages**
+11. **Biome + No ORM + All Packages**
+12. **Biome + No ORM + No Packages**
+
+**Each scenario includes ALL 10 app templates:**
+- React Vite • React Native Expo • Express API • Next.js Admin
+- Remix CMS • Hono Gateway • NestJS Service • React Webpack Desktop  
+- React Native Bare • Next.js + Solito Fullstack
+
+**Validation Steps (Early Exit on Error):**
+1. **Dependency Installation**: `bun install` 
+2. **Code Linting**: ESLint+Prettier vs Biome validation
+3. **TypeScript Compilation**: `bun run typecheck`
+4. **ORM Testing**: Schema generation and migration (Prisma tests on all scenarios)
+5. **Build Validation**: Key apps compile successfully
+
+**Test execution takes ~10-15 minutes** and creates temporary projects that are automatically cleaned up.
 
 ### Before Committing
 Simply run `bun run test` to validate that your changes work correctly across all scenarios.

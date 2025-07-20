@@ -442,6 +442,9 @@ async function createApp(
 	orm?: OrmConfig,
 	allPackages?: PackageTemplate[],
 ): Promise<void> {
+	// Change to parent directory to call createAppWithProcessing correctly
+	const originalCwd = process.cwd();
+	const parentDir = join(rootPath, "..");
 	const projectName = getProjectNameFromPath(rootPath);
 
 	// Convert existing packages to PackageTemplate format for processing
@@ -456,16 +459,26 @@ async function createApp(
 				}) as PackageTemplate,
 		);
 
-	// Use shared app creation logic
-	await createAppWithProcessing(projectName, app, packagesForProcessing, orm);
-
-	// Move created app to the correct location (shared function creates in projectName/apps/)
-	// but we need it in rootPath/apps/ which should be the same, so this should work correctly
+	try {
+		process.chdir(parentDir);
+		await createAppWithProcessing(projectName, app, packagesForProcessing, orm);
+	} finally {
+		process.chdir(originalCwd);
+	}
 }
 
 async function createPackage(rootPath: string, pkg: PackageTemplate): Promise<void> {
+	// Change to parent directory to call createPackageWithProcessing correctly
+	const originalCwd = process.cwd();
+	const parentDir = join(rootPath, "..");
 	const projectName = getProjectNameFromPath(rootPath);
-	await createPackageWithProcessing(projectName, pkg);
+
+	try {
+		process.chdir(parentDir);
+		await createPackageWithProcessing(projectName, pkg);
+	} finally {
+		process.chdir(originalCwd);
+	}
 }
 
 async function updateTsConfigReferences(
@@ -591,7 +604,7 @@ async function createPrismaSetup(rootPath: string, database: "postgresql" | "mys
 	await writeFile(join(rootPath, ".env.example"), envContent, { encoding: "utf-8" });
 }
 
-export async function addSinglePackage(): Promise<void> {
+export async function addSinglePackage(packageName?: string, packageTemplate?: string): Promise<void> {
 	console.log(chalk.blue("📦 Add Package"));
 	console.log(chalk.gray("Add a single package to your existing Bun monorepo\n"));
 
@@ -609,59 +622,104 @@ export async function addSinglePackage(): Promise<void> {
 
 	const templateConfig = getTemplateConfig();
 
-	// Ask for package type
-	const packageTypeResponse = await prompts({
-		type: "select",
-		name: "packageType",
-		message: "What type of package would you like to add?",
-		choices: [
-			{ title: "Template Package", value: "template", description: "Choose from pre-built package templates" },
-			{ title: "Blank Package", value: "blank", description: "Create a custom blank package" },
-		],
-	});
-
-	if (!packageTypeResponse.packageType) {
-		process.exit(0);
-	}
-
+	// If packageName is provided, use it directly
 	let packageToAdd: PackageTemplate;
 
-	if (packageTypeResponse.packageType === "template") {
-		// Select from template packages
-		const templateResponse = await prompts({
-			type: "select",
-			name: "selectedTemplate",
-			message: "Select a package template:",
-			choices: getPackageTemplateChoices(templateConfig),
-		});
+	if (packageName) {
+		// If template is specified, use it directly
+		if (packageTemplate) {
+			// Validate the template exists
+			const packageChoices = getPackageTemplateChoices(templateConfig);
+			const foundChoice = packageChoices.find((choice) => choice.value === packageTemplate);
 
-		if (!templateResponse.selectedTemplate) {
-			process.exit(0);
+			if (!foundChoice) {
+				console.log(chalk.red(`❌ Package template '${packageTemplate}' not found`));
+				console.log(chalk.gray("Available package templates:"));
+				for (const choice of packageChoices) {
+					console.log(chalk.gray(`  - ${choice.value}`));
+				}
+				process.exit(1);
+			}
+
+			packageToAdd = {
+				name: packageName,
+				template: packageTemplate,
+				category: "packages",
+			};
+		} else {
+			// Try to find it as a template first, otherwise create as blank
+			const packageChoices = getPackageTemplateChoices(templateConfig);
+			const foundChoice = packageChoices.find((choice) => choice.value === packageName);
+
+			if (foundChoice) {
+				packageToAdd = {
+					name: packageName,
+					template: packageName,
+					category: "packages",
+				};
+			} else {
+				// Create as blank package
+				console.log(chalk.yellow(`Package template '${packageName}' not found. Creating as blank package.`));
+				packageToAdd = {
+					name: packageName,
+					template: "blank",
+					category: "blank",
+				};
+			}
 		}
-
-		packageToAdd = {
-			name: templateResponse.selectedTemplate,
-			template: templateResponse.selectedTemplate,
-			category: "packages",
-		};
 	} else {
-		// Create blank package
-		const nameResponse = await prompts({
-			type: "text",
-			name: "packageName",
-			message: "Enter the package name:",
-			validate: (value: string) => (value.trim() ? true : "Package name is required"),
+		// Interactive mode - ask for package type
+		const packageTypeResponse = await prompts({
+			type: "select",
+			name: "packageType",
+			message: "What type of package would you like to add?",
+			choices: [
+				{ title: "Template Package", value: "template", description: "Choose from pre-built package templates" },
+				{ title: "Blank Package", value: "blank", description: "Create a custom blank package" },
+			],
 		});
 
-		if (!nameResponse.packageName) {
+		if (!packageTypeResponse.packageType) {
 			process.exit(0);
 		}
 
-		packageToAdd = {
-			name: nameResponse.packageName.trim(),
-			template: "blank",
-			category: "blank",
-		};
+		if (packageTypeResponse.packageType === "template") {
+			// Select from template packages
+			const templateResponse = await prompts({
+				type: "select",
+				name: "selectedTemplate",
+				message: "Select a package template:",
+				choices: getPackageTemplateChoices(templateConfig),
+			});
+
+			if (!templateResponse.selectedTemplate) {
+				process.exit(0);
+			}
+
+			packageToAdd = {
+				name: templateResponse.selectedTemplate,
+				template: templateResponse.selectedTemplate,
+				category: "packages",
+			};
+		} else {
+			// Create blank package
+			const nameResponse = await prompts({
+				type: "text",
+				name: "packageName",
+				message: "Enter the package name:",
+				validate: (value: string) => (value.trim() ? true : "Package name is required"),
+			});
+
+			if (!nameResponse.packageName) {
+				process.exit(0);
+			}
+
+			packageToAdd = {
+				name: nameResponse.packageName.trim(),
+				template: "blank",
+				category: "blank",
+			};
+		}
 	}
 
 	// Create the package
@@ -672,7 +730,7 @@ export async function addSinglePackage(): Promise<void> {
 	console.log(chalk.yellow("  bun install"));
 }
 
-export async function addSingleApp(): Promise<void> {
+export async function addSingleApp(appName?: string, appTemplateName?: string): Promise<void> {
 	console.log(chalk.blue("🚀 Add App"));
 	console.log(chalk.gray("Add a single app to your existing Bun monorepo\n"));
 
@@ -689,19 +747,62 @@ export async function addSingleApp(): Promise<void> {
 	console.log(chalk.gray(`📁 Root: ${monorepoInfo.rootPath}\n`));
 
 	// Get app name
-	const nameResponse = await prompts({
-		type: "text",
-		name: "appName",
-		message: "Enter the app name:",
-		validate: (value: string) => (value.trim() ? true : "App name is required"),
-	});
+	let finalAppName: string;
+	if (appName) {
+		finalAppName = appName;
+	} else {
+		const nameResponse = await prompts({
+			type: "text",
+			name: "appName",
+			message: "Enter the app name:",
+			validate: (value: string) => (value.trim() ? true : "App name is required"),
+		});
 
-	if (!nameResponse.appName) {
-		process.exit(0);
+		if (!nameResponse.appName) {
+			process.exit(0);
+		}
+
+		finalAppName = nameResponse.appName.trim();
 	}
 
 	const templateConfig = getTemplateConfig();
-	const appTemplate = await promptAppTemplate(nameResponse.appName.trim(), templateConfig);
+
+	let appTemplate: AppTemplate;
+
+	if (appTemplateName) {
+		// Try to find the template in any category
+		let foundTemplate: { template: string; category: string } | undefined;
+
+		for (const [categoryKey, category] of Object.entries(templateConfig.categories)) {
+			if (categoryKey === "packages") continue; // Skip package templates
+
+			if (category.templates[appTemplateName]) {
+				foundTemplate = { template: appTemplateName, category: categoryKey };
+				break;
+			}
+		}
+
+		if (!foundTemplate) {
+			console.log(chalk.red(`❌ App template '${appTemplateName}' not found`));
+			console.log(chalk.gray("Available app templates:"));
+			for (const [categoryKey, category] of Object.entries(templateConfig.categories)) {
+				if (categoryKey === "packages") continue;
+				for (const templateKey of Object.keys(category.templates)) {
+					console.log(chalk.gray(`  - ${templateKey} (${category.name})`));
+				}
+			}
+			process.exit(1);
+		}
+
+		appTemplate = {
+			name: finalAppName,
+			template: foundTemplate.template,
+			category: foundTemplate.category,
+		};
+	} else {
+		// Interactive template selection
+		appTemplate = await promptAppTemplate(finalAppName, templateConfig);
+	}
 
 	// Create the app
 	await addSingleAppToMonorepo(monorepoInfo, appTemplate);

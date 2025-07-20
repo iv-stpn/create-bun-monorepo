@@ -9,7 +9,7 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    timeout-minutes: 20  # Sufficient for full test suite
+    timeout-minutes: 25  # Sufficient for 12-scenario test suite
     
     steps:
     - uses: actions/checkout@v4
@@ -36,14 +36,14 @@ jobs:
     - name: Make test scripts executable
       run: chmod +x tests/test-runner.sh
     
-    - name: Run comprehensive test suite
+    - name: Run comprehensive 12-scenario test suite
       run: |
-        echo "Starting unified test suite..."
-        # Run full mode for comprehensive CI validation
-        # This includes 4 core scenarios + individual template testing
+        echo "Starting unified test suite with 12 comprehensive scenarios..."
+        # Run comprehensive testing - one monorepo with all apps, 12 scenarios
+        # Tests all combinations: linting (ESLint+Prettier/Biome) × ORM (Prisma/Drizzle/None) × packages (All/None)
         ./tests/test-runner.sh --mode=full
         # 
-        # Optional: Add Playwright browser tests (increases CI time)
+        # Optional: Add Playwright browser tests (increases CI time significantly)
         # ./tests/test-runner.sh --mode=full --playwright
     
     - name: Upload test artifacts on failure
@@ -70,22 +70,29 @@ jobs:
       if: success()
       run: |
         echo "## Test Results" >> $GITHUB_STEP_SUMMARY
-        echo "✅ Unified test suite completed successfully" >> $GITHUB_STEP_SUMMARY
-        echo "- 4 Core scenarios (All packages + UI-only × Prisma/Drizzle)" >> $GITHUB_STEP_SUMMARY
-        echo "- Individual template validation (10 templates)" >> $GITHUB_STEP_SUMMARY
-        echo "- Code quality checks (TypeScript, lint, build)" >> $GITHUB_STEP_SUMMARY
-        echo "- E2E server functionality tests" >> $GITHUB_STEP_SUMMARY
-        echo "- Comprehensive integration testing" >> $GITHUB_STEP_SUMMARY
+        echo "✅ Comprehensive 12-scenario test suite completed successfully" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Tested Configurations:**" >> $GITHUB_STEP_SUMMARY
+        echo "- 6 Linting/ORM combinations (ESLint+Prettier/Biome × Prisma/Drizzle/None)" >> $GITHUB_STEP_SUMMARY
+        echo "- 2 Package variants (All packages vs No packages)" >> $GITHUB_STEP_SUMMARY  
+        echo "- 10 App templates (React, Next.js, Express, etc.)" >> $GITHUB_STEP_SUMMARY
+        echo "- 7 Package templates (UI, Utils, Hooks, etc. + blank)" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Validations Performed:**" >> $GITHUB_STEP_SUMMARY
+        echo "- Code quality (TypeScript, linting, building)" >> $GITHUB_STEP_SUMMARY
+        echo "- ORM schema generation & migration" >> $GITHUB_STEP_SUMMARY
+        echo "- Early exit on any failure" >> $GITHUB_STEP_SUMMARY
 
     - name: Test failure summary
       if: failure()
       run: |
         echo "## Test Results" >> $GITHUB_STEP_SUMMARY
-        echo "❌ Test suite failed" >> $GITHUB_STEP_SUMMARY
+        echo "❌ 12-scenario test suite failed" >> $GITHUB_STEP_SUMMARY
         echo "Check the job logs and uploaded artifacts for details." >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "**Expected validations:**" >> $GITHUB_STEP_SUMMARY
-        echo "- 4 Core scenarios (All packages + UI-only × Prisma/Drizzle)" >> $GITHUB_STEP_SUMMARY
-        echo "- Individual template validation (10 templates)" >> $GITHUB_STEP_SUMMARY
-        echo "- Code quality checks (TypeScript, lint, build)" >> $GITHUB_STEP_SUMMARY
-        echo "- E2E server functionality tests" >> $GITHUB_STEP_SUMMARY
+        echo "- 12 comprehensive scenarios (6 configs × 2 package variants)" >> $GITHUB_STEP_SUMMARY
+        echo "- All app templates (React Vite, Next.js, Express, etc.)" >> $GITHUB_STEP_SUMMARY
+        echo "- All package templates (UI, Utils, Hooks, etc.)" >> $GITHUB_STEP_SUMMARY
+        echo "- Code quality checks (TypeScript, linting, building)" >> $GITHUB_STEP_SUMMARY
+        echo "- ORM functionality (Prisma/Drizzle schema & migration)" >> $GITHUB_STEP_SUMMARY
