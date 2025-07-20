@@ -1,3 +1,5 @@
+"use client";
+
 import { Link } from "solito/link";
 
 export default function Home() {

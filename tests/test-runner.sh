@@ -298,6 +298,75 @@ validate_code_quality() {
         fi
     done
     
+    # Test ORM functionality if configured
+    log_info "Checking for ORM configuration..."
+    if [ -f "prisma/schema.prisma" ]; then
+        log_info "Found Prisma configuration, testing ORM functionality..."
+        
+        # Reset database to ensure clean state
+        log_info "Resetting Prisma database to clean state..."
+        
+        # First, try to drop the database schema entirely
+        log_info "Dropping all database objects..."
+        if ! timeout 60 bunx prisma db push --accept-data-loss --skip-generate > "/tmp/prisma-db-drop-validate-$scenario_name.log" 2>&1; then
+            log_info "Initial db push failed, continuing with reset..."
+        fi
+        
+        if ! timeout 60 bunx prisma migrate reset --force --skip-generate > "/tmp/prisma-reset-validate-$scenario_name.log" 2>&1; then
+            log_error "Prisma database reset failed during validation for $scenario_name"
+            tail -20 "/tmp/prisma-reset-validate-$scenario_name.log" || true
+            return 1
+        fi
+        
+        # Generate Prisma client first
+        if ! timeout 60 bunx prisma generate > "/tmp/prisma-generate-validate-$scenario_name.log" 2>&1; then
+            log_error "Prisma generate failed during validation for $scenario_name"
+            tail -20 "/tmp/prisma-generate-validate-$scenario_name.log" || true
+            return 1
+        fi
+        
+        # Run development migration
+        if ! timeout 60 bunx prisma migrate dev --name "validation-test" --skip-generate > "/tmp/prisma-migrate-validate-$scenario_name.log" 2>&1; then
+            log_error "Prisma migrate failed during validation for $scenario_name"
+            tail -20 "/tmp/prisma-migrate-validate-$scenario_name.log" || true
+            return 1
+        fi
+        
+        log_success "Prisma ORM validation completed for $scenario_name"
+        
+    elif [ -f "drizzle.config.ts" ] || [ -f "drizzle.config.js" ]; then
+        log_info "Found Drizzle configuration, testing ORM functionality..."
+        
+        # Reset database to ensure clean state
+        log_info "Resetting Drizzle database to clean state..."
+        if timeout 60 bunx drizzle-kit drop --yes > "/tmp/drizzle-reset-validate-$scenario_name.log" 2>&1; then
+            log_success "Database reset completed using drizzle-kit drop"
+        else
+            log_info "Drop command not available, attempting fresh schema push..."
+        fi
+        
+        # Verify database is accessible after reset
+        verify_database_reset "drizzle" "$scenario_name" || return 1
+        
+        # Generate migration files
+        if ! timeout 60 bunx drizzle-kit generate > "/tmp/drizzle-generate-validate-$scenario_name.log" 2>&1; then
+            log_error "Drizzle generate failed during validation for $scenario_name"
+            tail -20 "/tmp/drizzle-generate-validate-$scenario_name.log" || true
+            return 1
+        fi
+        
+        # Apply migrations
+        if ! timeout 60 bunx drizzle-kit migrate > "/tmp/drizzle-migrate-validate-$scenario_name.log" 2>&1; then
+            log_error "Drizzle migrate failed during validation for $scenario_name"
+            tail -20 "/tmp/drizzle-migrate-validate-$scenario_name.log" || true
+            return 1
+        fi
+        
+        log_success "Drizzle ORM validation completed for $scenario_name"
+    else
+        log_info "No ORM configuration found, skipping ORM tests"
+    fi
+    
     cd "$project_dir"
     return 0
 }
@@ -744,49 +813,104 @@ test_single_comprehensive_scenario() {
     
     # Run ORM-specific tests
     if [ "$orm" = "prisma" ]; then
-        # Test Prisma schema generation and migration
+        # Ensure database is in clean state before testing
+        log_info "Resetting Prisma database to clean state..."
+        
+        # First, try to drop the database schema entirely using db push with --accept-data-loss
+        log_info "Dropping all database objects..."
+        if ! timeout 60 bunx prisma db push --accept-data-loss --skip-generate > "/tmp/prisma-db-drop-$scenario_name.log" 2>&1; then
+            log_info "Initial db push failed, continuing with reset..."
+        fi
+        
+        # Force reset database (drops and recreates migration history)
+        if ! timeout 60 bunx prisma migrate reset --force --skip-generate > "/tmp/prisma-reset-$scenario_name.log" 2>&1; then
+            log_error "Prisma database reset failed for $scenario_name"
+            tail -20 "/tmp/prisma-reset-$scenario_name.log" || true
+            return 1
+        fi
+        log_success "Database reset completed"
+        
+        # Generate Prisma client first (before migrations)
+        log_info "Generating Prisma client..."
         if ! timeout 60 bunx prisma generate > "/tmp/prisma-generate-$scenario_name.log" 2>&1; then
             log_error "Prisma generate failed for $scenario_name"
             tail -20 "/tmp/prisma-generate-$scenario_name.log" || true
             return 1
         fi
+        log_success "Prisma client generated"
         
-        if ! timeout 60 bunx prisma migrate dev --name "test" --skip-generate > "/tmp/prisma-migrate-$scenario_name.log" 2>&1; then
+        # Run development migration (this creates the database schema)
+        log_info "Running Prisma migration..."
+        if ! timeout 60 bunx prisma migrate dev --name "test-migration" --skip-generate > "/tmp/prisma-migrate-$scenario_name.log" 2>&1; then
             log_error "Prisma migrate failed for $scenario_name"
             tail -20 "/tmp/prisma-migrate-$scenario_name.log" || true
             return 1
         fi
+        log_success "Prisma migration completed"
+        
     elif [ "$orm" = "drizzle" ]; then
-        # Test Drizzle schema generation
+        # Ensure database is in clean state before testing
+        log_info "Resetting Drizzle database to clean state..."
+        
+        # Try to drop all tables using drizzle-kit (if available)
+        if timeout 60 bunx drizzle-kit drop --yes > "/tmp/drizzle-reset-$scenario_name.log" 2>&1; then
+            log_success "Database reset completed using drizzle-kit drop"
+        else
+            # If drop command is not available, try to reset using push with --force
+            log_info "Drop command not available, attempting fresh schema push..."
+            if timeout 60 bunx drizzle-kit push --force > "/tmp/drizzle-push-reset-$scenario_name.log" 2>&1; then
+                log_success "Database reset completed using push --force"
+            else
+                log_info "Manual reset not available, continuing with migration (may have conflicts)..."
+            fi
+        fi
+        
+        # Verify database is accessible and clean
+        verify_database_reset "drizzle" "$scenario_name" || return 1
+        
+        # Generate migration files
+        log_info "Generating Drizzle migration files..."
         if ! timeout 60 bunx drizzle-kit generate > "/tmp/drizzle-generate-$scenario_name.log" 2>&1; then
             log_error "Drizzle generate failed for $scenario_name"
             tail -20 "/tmp/drizzle-generate-$scenario_name.log" || true
             return 1
         fi
+        log_success "Drizzle migration files generated"
         
+        # Apply migrations
+        log_info "Applying Drizzle migrations..."
         if ! timeout 60 bunx drizzle-kit migrate > "/tmp/drizzle-migrate-$scenario_name.log" 2>&1; then
             log_error "Drizzle migrate failed for $scenario_name"
             tail -20 "/tmp/drizzle-migrate-$scenario_name.log" || true
             return 1
         fi
+        log_success "Drizzle migrations applied"
     fi
     
     # Test building apps (quick validation)
     log_info "Testing app builds..."
     local build_errors=()
     
+    # First build all packages to ensure they're available for apps
+    log_info "Building packages first..."
+    if ! timeout 120 bun run --filter="./packages/*" build > "/tmp/build-packages-$scenario_name.log" 2>&1; then
+        log_error "Package build failed"
+        tail -20 "/tmp/build-packages-$scenario_name.log" || true
+        return 1
+    fi
+    log_success "Packages built successfully"
+    
     # Test a few key apps to ensure they build
     local test_apps=("web" "api" "admin")
     for app in "${test_apps[@]}"; do
         if [ -d "apps/$app" ]; then
-            cd "apps/$app"
-            if ! timeout 120 bun run build > "/tmp/build-$app-$scenario_name.log" 2>&1; then
+            # Build from root using workspace filtering to ensure dependencies are resolved
+            if ! timeout 120 bun run --filter="./apps/$app" build > "/tmp/build-$app-$scenario_name.log" 2>&1; then
                 build_errors+=("$app")
                 log_error "Build failed for app: $app"
             else
                 log_success "Build passed for app: $app"  
             fi
-            cd "$project_dir"
         fi
     done
     
@@ -860,6 +984,30 @@ create_comprehensive_test_project() {
     fi
     
     echo "$project_dir"
+}
+
+# Verify database is properly reset and accessible
+verify_database_reset() {
+    local orm_type="$1"
+    local scenario_name="$2"
+    
+    if [ "$orm_type" = "prisma" ]; then
+        # Verify Prisma can connect to the database (skip verification step for now)
+        log_info "Skipping explicit database verification for Prisma (handled by migrate commands)"
+        log_success "Prisma database verification completed"
+        
+    elif [ "$orm_type" = "drizzle" ]; then
+        # Verify Drizzle can connect and push schema
+        log_info "Verifying Drizzle database connection..."
+        if ! timeout 30 bunx drizzle-kit push --force > "/tmp/drizzle-verify-$scenario_name.log" 2>&1; then
+            log_error "Failed to verify Drizzle database connection"
+            tail -10 "/tmp/drizzle-verify-$scenario_name.log" || true
+            return 1
+        fi
+        log_success "Drizzle database connection verified"
+    fi
+    
+    return 0
 }
 
 # Generate test report

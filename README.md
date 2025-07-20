@@ -271,7 +271,7 @@ Each scenario creates **one monorepo with ALL app templates** and tests differen
 1. **Dependency Installation**: `bun install` 
 2. **Code Linting**: ESLint+Prettier vs Biome validation
 3. **TypeScript Compilation**: `bun run typecheck`
-4. **ORM Testing**: Schema generation and migration (Prisma tests on all scenarios)
+4. **ORM Testing**: Database reset, schema generation and migration (includes database cleanup for consistent state)
 5. **Build Validation**: Key apps compile successfully
 
 **Test execution takes ~10-15 minutes** and creates temporary projects that are automatically cleaned up.
@@ -317,7 +317,7 @@ The UI package should have proper `exports` in its `package.json`:
 {
   "main": "dist/index.js",
   "module": "dist/index.js", 
-  "types": "dist/index.d.ts",
+  "types": "src/index.ts",
   "exports": {
     ".": {
       "import": "./dist/index.js",
@@ -353,3 +353,22 @@ bun run build
 ## License
 
 MIT License - see the [LICENSE](LICENSE) file for details.
+
+### Database Testing and Reset
+
+The test suite ensures database consistency by automatically resetting the database state:
+
+**For Prisma:**
+- Runs `prisma migrate reset --force` to drop and recreate the database
+- Generates fresh Prisma client with `prisma generate`
+- Applies migrations with `prisma migrate dev`
+- Verifies database connectivity with `prisma db push`
+
+**For Drizzle:**
+- Attempts `drizzle-kit drop --yes` to clean existing tables
+- Falls back to `drizzle-kit push --force` if drop is unavailable
+- Generates migration files with `drizzle-kit generate`
+- Applies migrations with `drizzle-kit migrate`
+- Verifies database connectivity
+
+This ensures each test scenario starts with a clean database state and prevents conflicts between test runs.
