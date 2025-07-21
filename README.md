@@ -262,11 +262,6 @@ Each scenario creates **one monorepo with ALL app templates** and tests differen
 11. **Biome + No ORM + All Packages**
 12. **Biome + No ORM + No Packages**
 
-**Each scenario includes ALL 10 app templates:**
-- React Vite • React Native Expo • Express API • Next.js Admin
-- Remix CMS • Hono Gateway • NestJS Service • React Webpack Desktop  
-- React Native Bare • Next.js + Solito Fullstack
-
 **Validation Steps (Early Exit on Error):**
 1. **Dependency Installation**: `bun install` 
 2. **Code Linting**: ESLint+Prettier vs Biome validation
@@ -274,7 +269,7 @@ Each scenario creates **one monorepo with ALL app templates** and tests differen
 4. **ORM Testing**: Database reset, schema generation and migration (includes database cleanup for consistent state)
 5. **Build Validation**: Key apps compile successfully
 
-**Test execution takes ~10-15 minutes** and creates temporary projects that are automatically cleaned up.
+**Test execution takes ~10 minutes** and creates temporary projects that are automatically cleaned up.
 
 ### Before Committing
 Simply run `bun run test` to validate that your changes work correctly across all scenarios.

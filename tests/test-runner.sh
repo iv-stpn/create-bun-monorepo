@@ -1096,15 +1096,6 @@ generate_test_report() {
             echo "  11. Biome + No ORM + All Packages"
             echo "  12. Biome + No ORM + No Packages"
             echo ""
-            echo "📱 ALL APP TEMPLATES TESTED:"
-            echo "   • React Vite • React Native Expo • Express API"
-            echo "   • Next.js Admin • Remix CMS • Hono Gateway" 
-            echo "   • NestJS Service • React Webpack Desktop"
-            echo "   • React Native Bare • Next.js + Solito"
-            echo ""
-            echo "📦 ALL PACKAGE TEMPLATES TESTED:"
-            echo "   • UI Components • Native Components • Utils"
-            echo "   • Schemas • React Hooks • 2 Blank Packages"
             ;;
         "playwright-only")
             log_success "Playwright tests completed!"
