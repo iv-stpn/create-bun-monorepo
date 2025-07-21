@@ -1,5 +1,5 @@
 ---
-"create-bun-monorepo": major
+"create-bun-monorepo": patch
 ---
 
 Initial version
