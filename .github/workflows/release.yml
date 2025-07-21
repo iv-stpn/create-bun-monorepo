@@ -2,13 +2,28 @@ name: Release
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
+    paths:
+      - "src/**"
+      - "templates/**"
+      - "scripts/**"
+      - "tests/**"
+      - "playwright.config.ts"
+      - "package.json"
+      - "bun.lockb"
+      - "tsconfig.json"
+      - "biome.json"
+      - ".changeset/**"
 
 concurrency: ${{ github.workflow }}-${{ github.ref }}
 
 jobs:
+  # Call the CI workflow first to ensure all tests pass
+  ci:
+    uses: ./.github/workflows/ci.yml
+
   release:
+    needs: ci
     name: Release
     runs-on: ubuntu-latest
     permissions:
@@ -39,11 +54,11 @@ jobs:
       - name: Build Package
         run: bun run build
 
-      - name: Create Release Pull Request or Publish to npm
+      - name: Release
         id: changesets
         uses: changesets/action@v1
         with:
-          # This expects you to have a script called release which does a build for your packages and calls changeset publish
+          version: bun run changeset:version
           publish: bun run release
           title: "Version Packages"
           commit: "Version Packages"

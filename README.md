@@ -279,6 +279,40 @@ Each scenario creates **one monorepo with ALL app templates** and tests differen
 ### Before Committing
 Simply run `bun run test` to validate that your changes work correctly across all scenarios.
 
+## CI/CD and Release Process
+
+The project uses **GitHub Actions** for automated testing and releases:
+
+### Continuous Integration (CI)
+- **Trigger**: Automatically runs on pushes/PRs to `main` branch affecting relevant paths
+- **Paths watched**: `src/`, `templates/`, `scripts/`, `tests/`, config files
+- **Process**: 
+  1. Linting and TypeScript checks
+  2. Project build validation  
+  3. Comprehensive 12-scenario test suite
+  4. Artifacts upload on failure (logs, Playwright reports)
+
+### Automated Releases
+- **Trigger**: Runs after successful CI on `main` branch
+- **Process**:
+  1. **Waits for CI**: Release only runs after all CI tests pass
+  2. **Quality checks**: Additional TypeScript, linting, and build validation
+  3. **Changesets**: Automatically versions and publishes using changesets
+  4. **GitHub Releases**: Creates releases with automated changelog
+
+### Creating a Release
+1. **Create changeset** (describes your changes):
+   ```bash
+   bun run changeset
+   ```
+2. **Push to main**:
+   ```bash
+   git push origin main
+   ```
+3. **Automatic**: GitHub Actions handles CI → Release → NPM publish
+
+For more details, see [RELEASE.md](RELEASE.md).
+
 ## Contributing
 
 1. Fork the repository

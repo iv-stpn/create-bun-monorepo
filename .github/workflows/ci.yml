@@ -3,11 +3,32 @@ name: CI
 on:
   push:
     branches: [ main ]
+    paths:
+      - "src/**"
+      - "templates/**"
+      - "scripts/**"
+      - "tests/**"
+      - "playwright.config.ts"
+      - "package.json"
+      - "bun.lockb"
+      - "tsconfig.json"
+      - "biome.json"
   pull_request:
     branches: [ main ]
+    paths:
+      - "src/**"
+      - "templates/**"
+      - "scripts/**"
+      - "tests/**"
+      - "playwright.config.ts"
+      - "package.json"
+      - "bun.lockb"
+      - "tsconfig.json"
+      - "biome.json"
 
 jobs:
-  test:
+  ci:
+    name: CI Tests
     runs-on: ubuntu-latest
     timeout-minutes: 25  # Sufficient for 12-scenario test suite
     

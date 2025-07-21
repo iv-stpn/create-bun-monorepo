@@ -27,7 +27,6 @@
 		"changeset:version": "changeset version",
 		"changeset:publish": "changeset publish",
 		"release": "bun run build && bun run changeset:publish",
-		"release:auto": "bun run scripts/release.ts --auto-changeset",
 		"prepublishOnly": "bun run build && chmod +x dist/index.js"
 	},
 	"keywords": [

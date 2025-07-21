@@ -4,14 +4,40 @@ This document outlines the release process for the create-bun-monorepo.
 
 ## Automated Release (Recommended)
 
-Use the automated release script for consistent releases:
+Releases are automated via GitHub Actions when changes are pushed to the `main` branch. The workflow automatically:
+
+1. **Runs CI Tests**: Full test suite with 12 comprehensive scenarios
+2. **Validates Quality**: TypeScript, linting, and building checks
+3. **Automatic Versioning**: Updates package.json and CHANGELOG.md based on changesets  
+4. **Publishes Release**: Publishes to NPM with updated version
+5. **Creates GitHub Release**: Automatically generates release notes
+
+### Creating a Release
+
+1. **Create a changeset** (describes your changes):
+   ```bash
+   bun run changeset
+   ```
+
+2. **Push to main branch**:
+   ```bash
+   git add .
+   git commit -m "feat: your feature description"
+   git push origin main
+   ```
+
+3. **GitHub Actions handles the rest**: The release workflow will automatically run after CI passes.
+
+### Manual Release (Advanced)
+
+For local development or emergency releases:
 
 ```bash
-# Automatic release with changeset generation
-bun run release:auto
-
 # Manual release (if changeset already exists)
 bun run release
+
+# Legacy automated release (deprecated - use GitHub Actions instead)
+# bun run release:auto
 ```
 
 ## Manual Release Process
