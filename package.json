@@ -9,6 +9,10 @@
 	"bin": {
 		"create-bun-monorepo": "./dist/index.js"
 	},
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/iv-stpn/create-bun-monorepo.git"
+	},
 	"scripts": {
 		"build": "bun build src/index.ts --outdir dist --target node --minify",
 		"dev": "bun run src/index.ts",
