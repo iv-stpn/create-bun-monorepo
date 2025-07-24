@@ -1,0 +1,2 @@
+# Ignore React Router app specific files
+.react-router/

@@ -1,5 +1,5 @@
 {
-	"name": "nestjs",
+	"name": "@create-bun-monorepo/nestjs",
 	"version": "1.0.0",
 	"private": true,
 	"scripts": {

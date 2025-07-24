@@ -405,7 +405,7 @@ async function createMonorepo(options: CreateOptions) {
 async function createRootPackageJson(
 	appName: string,
 	linting: string,
-	_apps: AppTemplate[],
+	apps: AppTemplate[],
 	packages: PackageTemplate[],
 	orm?: OrmConfig,
 ) {
@@ -423,7 +423,9 @@ async function createRootPackageJson(
 					? 'bun run --filter="./packages/*" build && bun run --filter="./apps/*" build'
 					: 'bun run --filter="*" build',
 			dev: 'bun run --filter="*" dev',
-			typecheck: "tsc --noEmit --pretty",
+			typecheck: apps.some((app) => app.template.includes("react-router"))
+				? 'bun run --filter="*" typecheck'
+				: "tsc --build --pretty",
 			...(linting === "biome" && {
 				lint: "biome check .",
 				"lint:fix": "biome check --write .",
@@ -485,9 +487,10 @@ async function createLintingConfig(
 	const ignoreContents = `${[
 		"bun.lock",
 		"node_modules",
+		"build",
 		"dist",
 		...(apps.some((app) => app.template.includes("nextjs")) ? [".next", "out"] : []),
-		...(apps.some((app) => app.template.includes("remix")) ? ["build", ".cache"] : []),
+		...(apps.some((app) => app.template.includes("react-router")) ? [".react-router", ".cache"] : []),
 	].join("\n")}\n`;
 
 	if (linting === "biome") {
@@ -548,7 +551,7 @@ async function createGitignore(appName: string, apps: AppTemplate[]) {
 		".DS_Store",
 		".env",
 		...(apps.some((app) => app.template.includes("nextjs")) ? [".next/", "out/"] : []),
-		...(apps.some((app) => app.template.includes("remix")) ? [".cache/"] : []),
+		...(apps.some((app) => app.template.includes("react-router")) ? [".react-router/", ".cache/"] : []),
 	].join("\n");
 
 	await writeFile(join(appName, ".gitignore"), `${gitignore}\n`, { encoding: "utf-8" });

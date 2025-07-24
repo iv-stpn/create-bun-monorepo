@@ -387,8 +387,6 @@ get_app_port() {
         else
             echo "3000"
         fi
-    elif grep -q "remix" "$app_dir/package.json" 2>/dev/null; then
-        echo "3003"
     elif grep -q "nestjs" "$app_dir/package.json" 2>/dev/null; then
         echo "3101"
     elif grep -q "express" "$app_dir/package.json" 2>/dev/null; then
@@ -401,6 +399,8 @@ get_app_port() {
         echo "8080"
     elif grep -q "webpack" "$app_dir/package.json" 2>/dev/null; then
         echo "3001"
+    elif grep -q "react-router" "$app_dir/package.json" 2>/dev/null; then
+        echo "3004"
     else
         echo "3000"  # Default
     fi
@@ -679,8 +679,8 @@ test_all_scenarios() {
     log_section "TESTING ALL SCENARIOS WITH COMPREHENSIVE MONOREPO"
     
     # All available app templates
-    local all_apps="web[react-vite],mobile[react-native-expo],api[express],admin[nextjs],cms[remix],gateway[hono],service[nestjs],desktop[react-webpack],native[react-native-bare],fullstack[nextjs-solito]"
-    
+    local all_apps="react-vite[react-vite],react-native-expo[react-native-expo],express[express],nextjs[nextjs],react-router[react-router],hono[hono],nestjs[nestjs],react-webpack[react-webpack],react-native-bare[react-native-bare],nextjs-solito[nextjs-solito]"
+
     # Package configurations
     local all_packages="ui,ui-native,utils,schemas,hooks,blank1,blank2"
     local no_packages=""
@@ -960,7 +960,7 @@ test_single_comprehensive_scenario() {
     fi
     
     # Test all apps to ensure they build
-    local test_apps=("web" "api" "admin" "cms" "gateway" "service" "desktop" "native" "fullstack")
+    local test_apps=("react-vite" "react-native-expo" "nextjs" "react-router" "hono" "nestjs" "react-webpack" "react-native-bare" "nextjs-solito")
     for app in "${test_apps[@]}"; do
         if [ -d "apps/$app" ]; then
             # Build from root using workspace filtering to ensure dependencies are resolved

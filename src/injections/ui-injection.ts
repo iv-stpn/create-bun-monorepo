@@ -14,10 +14,9 @@ const SOLITO_LINK_REGEX = /import { Link } from "solito\/link";/;
 const SOLITO_HOME_REGEX = /export default function Home\(\) \{/;
 const SOLITO_DIV_REGEX = /<div className="flex gap-4 justify-center">/;
 
-// Remix patterns
-const REMIX_META_REGEX = /import type { MetaFunction } from "@remix-run\/node";/;
-const REMIX_INDEX_REGEX = /export default function Index\(\) \{\s*return \(/;
-const REMIX_UL_REGEX = /<ul>/;
+// React Router v7 patterns
+const REACT_ROUTER_INDEX_REGEX = /export function Welcome\(\) \{\s*return \(/;
+const REACT_ROUTER_UL_REGEX = /<ul>/;
 
 // React Native patterns
 const RN_TOUCHABLE_REGEX =
@@ -55,9 +54,9 @@ export async function injectUIComponentDemos(
 				await injectNextJSSolitoUIDemo(appPath, projectName);
 			}
 			break;
-		case "remix":
+		case "react-router":
 			if (hasUIPackage) {
-				await injectRemixUIDemo(appPath, projectName);
+				await injectReactRouterUIDemo(appPath, projectName);
 			}
 			break;
 		case "react-native-expo":
@@ -150,34 +149,34 @@ import { Link } from "solito/link";`,
 }
 
 /**
- * Inject UI component demo into Remix apps
+ * Inject UI component demo into React Router apps
  */
-async function injectRemixUIDemo(appPath: string, projectName: string): Promise<void> {
-	const indexFilePath = join(appPath, "app", "routes", "_index.tsx");
+async function injectReactRouterUIDemo(appPath: string, projectName: string): Promise<void> {
+	const indexFilePath = join(appPath, "app", "welcome", "welcome.tsx");
 	try {
 		const content = await readFile(indexFilePath, "utf-8");
 
 		const updatedContent = content
 			.replace(
-				REMIX_META_REGEX,
-				`import type { MetaFunction } from "@remix-run/node";
-import { Button } from "@${projectName}/ui";
-import { useState } from "react";`,
+				"",
+				`import { Button } from "@${projectName}/ui";
+import { useState } from "react";
+`,
 			)
 			.replace(
-				REMIX_INDEX_REGEX,
-				`export default function Index() {
+				REACT_ROUTER_INDEX_REGEX,
+				`export function Welcome() {
 	const [count, setCount] = useState(0);
 
 	return (`,
 			)
 			.replace(
-				REMIX_UL_REGEX,
+				REACT_ROUTER_UL_REGEX,
 				`<div style={{ marginBottom: "2rem" }}>
-				<h2>UI Component Demo</h2>
-				<Button onClick={() => setCount((count) => count + 1)}>Count is {count}</Button>
-			</div>
-			<ul>`,
+							<h2>UI Component Demo</h2>
+							<Button onClick={() => setCount((count) => count + 1)}>Count is {count}</Button>
+						</div>
+						<ul>`,
 			);
 
 		await writeFile(indexFilePath, updatedContent, "utf-8");

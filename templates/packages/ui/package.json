@@ -1,5 +1,5 @@
 {
-	"name": "ui",
+	"name": "@create-bun-monorepo/ui",
 	"version": "1.0.0",
 	"private": true,
 	"type": "module",

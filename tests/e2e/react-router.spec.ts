@@ -1,10 +1,10 @@
 import { expect, test } from "@playwright/test";
 
-test.describe("Remix E2E", () => {
-	test("should load the Remix application successfully", async ({ page }) => {
+test.describe("React Router v7 E2E", () => {
+	test("should load the React Router v7 application successfully", async ({ page }) => {
 		await page.goto("http://localhost:3004");
 
-		// Wait for Remix to hydrate
+		// Wait for React Router v7 to hydrate
 		await page.waitForLoadState("networkidle");
 
 		// Check that the page loaded
@@ -20,11 +20,11 @@ test.describe("Remix E2E", () => {
 		await page.goto("http://localhost:3004");
 		await page.waitForLoadState("networkidle");
 
-		// Check for Remix root element
+		// Check for React Router v7 root element
 		const html = await page.innerHTML("html");
 		expect(html).toContain("body");
 
-		// Verify page is interactive (Remix should hydrate)
+		// Verify page is interactive (React Router v7 should hydrate)
 		const isInteractive = await page.evaluate(() => document.readyState);
 		expect(isInteractive).toBe("complete");
 	});
@@ -56,7 +56,7 @@ test.describe("Remix E2E", () => {
 		}
 	});
 
-	test("should load Remix resources correctly", async ({ page }) => {
+	test("should load React Router v7 resources correctly", async ({ page }) => {
 		const responses: string[] = [];
 
 		page.on("response", (response) => {
@@ -75,7 +75,7 @@ test.describe("Remix E2E", () => {
 		// Check if ORM environment variable is set
 		if (process.env.ORM) {
 			try {
-				// Remix typically uses resource routes
+				// React Router v7 typically uses resource routes
 				const response = await request.get("http://localhost:3004/api/users");
 				if (response.ok()) {
 					const data = await response.json();
@@ -90,7 +90,7 @@ test.describe("Remix E2E", () => {
 				}
 			} catch (_e) {
 				// API endpoints might not be available or configured differently
-				console.log("API endpoints not available in basic Remix template");
+				console.log("API endpoints not available in basic React Router v7 template");
 			}
 		} else {
 			console.log("No ORM configured, skipping API endpoint test");
@@ -114,7 +114,7 @@ test.describe("Remix E2E", () => {
 	test("should handle 404 pages correctly", async ({ page }) => {
 		const response = await page.goto("http://localhost:3004/non-existent-route-12345");
 
-		// Remix handles 404s gracefully, might return 200 with error boundary or 404
+		// React Router v7 handles 404s gracefully, might return 200 with error boundary or 404
 		expect([200, 404]).toContain(response?.status());
 
 		// Check if error page or 404 content is shown
@@ -127,7 +127,7 @@ test.describe("Remix E2E", () => {
 		await page.goto("http://localhost:3004");
 		await page.waitForLoadState("networkidle");
 
-		// Check for basic meta tags (Remix should handle these)
+		// Check for basic meta tags (React Router v7 should handle these)
 		const title = await page.title();
 		expect(title).toBeDefined();
 		expect(title.length).toBeGreaterThan(0);

@@ -1,5 +1,5 @@
 {
-	"name": "react-native-expo",
+	"name": "@create-bun-monorepo/react-native-expo",
 	"version": "1.0.0",
 	"private": true,
 	"main": "expo-router/entry",

@@ -1,5 +1,5 @@
 {
-	"name": "react-native-bare",
+	"name": "@create-bun-monorepo/react-native-bare",
 	"version": "1.0.0",
 	"private": true,
 	"scripts": {

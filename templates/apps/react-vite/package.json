@@ -1,5 +1,5 @@
 {
-	"name": "react-vite",
+	"name": "@create-bun-monorepo/react-vite",
 	"version": "1.0.0",
 	"private": true,
 	"type": "module",

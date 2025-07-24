@@ -1,5 +1,5 @@
 {
-	"name": "react-webpack",
+	"name": "@create-bun-monorepo/react-webpack",
 	"version": "1.0.0",
 	"private": true,
 	"scripts": {

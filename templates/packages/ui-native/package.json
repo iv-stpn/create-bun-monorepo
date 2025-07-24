@@ -1,5 +1,5 @@
 {
-	"name": "ui-native",
+	"name": "@create-bun-monorepo/ui-native",
 	"version": "1.0.0",
 	"private": true,
 	"main": "dist/index.js",
@@ -13,7 +13,7 @@
 	],
 	"scripts": {
 		"build": "tsc",
-		"typecheck": "tsc --noEmit"
+		"typecheck": "tsc --noEmit --pretty"
 	},
 	"dependencies": {
 		"react": "^19",
@@ -23,6 +23,6 @@
 		"@types/react": "^19",
 		"@types/react-native": "latest",
 		"typescript": "^5",
-		"@react-native/typescript-config": "^0.80.0"
+		"@react-native/typescript-config": "^0.80"
 	}
 }

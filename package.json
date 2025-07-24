@@ -16,7 +16,7 @@
 	"scripts": {
 		"build": "bun build src/index.ts --outdir dist --target node --minify",
 		"dev": "bun run src/index.ts",
-		"typecheck": "tsc --noEmit --pretty",
+		"typecheck": "tsc --noEmit --pretty && bun run --cwd templates/apps/react-router typecheck",
 		"lint": "biome check .",
 		"lint:fix": "biome check --write .",
 		"format": "biome format --write .",

@@ -1,5 +1,5 @@
 {
-	"name": "express",
+	"name": "@create-bun-monorepo/express",
 	"version": "1.0.0",
 	"private": true,
 	"type": "module",

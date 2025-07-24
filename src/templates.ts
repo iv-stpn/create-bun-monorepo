@@ -56,10 +56,10 @@ const TEMPLATES_CONFIG: TemplatesConfig = {
 					description: "Next.js with Solito for universal React Native",
 					path: "apps/nextjs-solito",
 				},
-				remix: {
-					name: "Remix",
-					description: "Full-stack React framework focused on web standards",
-					path: "apps/remix",
+				"react-router": {
+					name: "React Router v7 (previously Remix)",
+					description: "CSR + SSR React framework with nested routing",
+					path: "apps/react-router",
 				},
 			},
 		},
@@ -135,7 +135,7 @@ const TEMPLATES_CONFIG: TemplatesConfig = {
 } as const;
 
 // Full-stack frameworks that can use ORMs (even though they're in frontend category)
-const FULLSTACK_FRAMEWORKS = ["nextjs", "nextjs-solito", "remix"];
+const FULLSTACK_FRAMEWORKS = ["nextjs", "nextjs-solito", "react-router"];
 const BACKEND_FRAMEWORKS = ["express", "hono", "nestjs"];
 const MOBILE_FRAMEWORKS = ["react-native-expo", "react-native-bare"];
 
