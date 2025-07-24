@@ -220,7 +220,6 @@ async function createBlankPackage(pkgPath: string, pkgName: string): Promise<voi
 		extends: "../../tsconfig.base.json",
 		compilerOptions: {
 			outDir: "./dist",
-			rootDir: "./src",
 		},
 		include: ["src/**/*", "index.ts"],
 		exclude: ["node_modules", "dist"],
