@@ -370,36 +370,50 @@ async function promptUser(): Promise<CreateOptions> {
 async function createMonorepo(options: CreateOptions) {
 	const { appName, linting, apps, packages, orm } = options;
 
+	// Add db package automatically if ORM is enabled
+	const finalPackages = [...packages];
+	if (orm && orm.type !== "none") {
+		// Check if db package is already included
+		const hasDbPackage = finalPackages.some((pkg) => pkg.name === "db");
+		if (!hasDbPackage) {
+			finalPackages.push({
+				name: "db",
+				template: "db",
+				category: "packages",
+			});
+		}
+	}
+
 	// Create root directory
 	await mkdir(appName, { recursive: true });
 
 	// Create subdirectories
 	await mkdir(join(appName, "apps"), { recursive: true });
-	if (packages.length > 0) await mkdir(join(appName, "packages"), { recursive: true });
+	if (finalPackages.length > 0) await mkdir(join(appName, "packages"), { recursive: true });
 
 	// Create root package.json
-	await createRootPackageJson(appName, linting, apps, packages, orm);
+	await createRootPackageJson(appName, linting, apps, finalPackages, orm);
 
 	// Create TypeScript config
-	await createRootTsConfig(appName, apps, packages);
+	await createRootTsConfig(appName, apps, finalPackages);
 
 	// Create linting configuration
-	await createLintingConfig(appName, linting, apps, packages);
+	await createLintingConfig(appName, linting, apps, finalPackages);
 
-	// Create ORM setup if specified
+	// Create .gitignore
+	await createGitignore(appName, apps);
+
+	// Create packages first (especially db package for ORM)
+	for (const pkg of finalPackages) await createPackage(appName, pkg);
+
+	// Create ORM setup if specified (this will populate the db package)
 	if (orm && orm.type !== "none") {
 		await createOrmSetup(appName, orm);
 		await addDockerCompose(appName, orm);
 	}
 
-	// Create .gitignore
-	await createGitignore(appName, apps);
-
 	// Create apps
-	for (const app of apps) await createApp(appName, app, packages, orm);
-
-	// Create packages
-	for (const pkg of packages) await createPackage(appName, pkg);
+	for (const app of apps) await createApp(appName, app, finalPackages, orm);
 }
 
 async function createRootPackageJson(
@@ -476,6 +490,11 @@ async function createRootTsConfig(appName: string, apps: AppTemplate[], packages
 	const baseTsConfigPath = join(rootPath, "templates", "tsconfig.base.json");
 	const baseTsConfig = await readFile(baseTsConfigPath, "utf-8");
 	await writeFile(join(appName, "tsconfig.base.json"), baseTsConfig, { encoding: "utf-8" });
+
+	// Copy base tsconfig for apps
+	const baseTailwindConfigPath = join(rootPath, "templates", "tailwind.base.js");
+	const baseTailwindConfig = await readFile(baseTailwindConfigPath, "utf-8");
+	await writeFile(join(appName, "tailwind.base.js"), baseTailwindConfig, { encoding: "utf-8" });
 }
 
 async function createLintingConfig(

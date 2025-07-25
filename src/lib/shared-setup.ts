@@ -271,6 +271,8 @@ export async function createAppWithProcessing(
 		appPath,
 		`@${projectName}/${app.name}`,
 		packages.filter((pkg) => {
+			// Include db package if ORM is enabled and this is a backend/fullstack framework
+			if (orm && orm.type !== "none" && ORM_FRAMEWORKS.includes(app.template) && pkg.template === "db") return true;
 			if (NATIVE_FRAMEWORKS.includes(app.template) && pkg.template === "ui-native") return true;
 			if ((REACT_FRAMEWORKS.includes(app.template) && pkg.template === "ui") || pkg.template === "hooks") return true;
 			if (pkg.template === "utils" || pkg.template === "schemas") return true;
@@ -309,6 +311,11 @@ export function getPackageTemplateChoices(
 	const packagesCategory = config.categories.packages;
 	if (packagesCategory?.templates) {
 		for (const [templateKey, template] of Object.entries(packagesCategory.templates)) {
+			// Exclude the db package from selection - it's automatically added when ORM is selected
+			if (templateKey === "db") {
+				continue;
+			}
+
 			choices.push({
 				title: `${templateKey} - ${template.name}`,
 				description: template.description,

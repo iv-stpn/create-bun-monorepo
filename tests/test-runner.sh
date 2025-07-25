@@ -300,33 +300,33 @@ validate_code_quality() {
     
     # Test ORM functionality if configured
     log_info "Checking for ORM configuration..."
-    if [ -f "prisma/schema.prisma" ]; then
-        log_info "Found Prisma configuration, testing ORM functionality..."
+    if [ -f "packages/db/prisma/schema.prisma" ]; then
+        log_info "Found Prisma configuration in db package, testing ORM functionality..."
         
         # Reset database to ensure clean state
         log_info "Resetting Prisma database to clean state..."
         
         # First, try to drop the database schema entirely
         log_info "Dropping all database objects..."
-        if ! timeout 60 bunx prisma db push --accept-data-loss --skip-generate > "/tmp/prisma-db-drop-validate-$scenario_name.log" 2>&1; then
+        if ! timeout 60 bunx prisma db push --accept-data-loss --skip-generate --schema=packages/db/prisma/schema.prisma > "/tmp/prisma-db-drop-validate-$scenario_name.log" 2>&1; then
             log_info "Initial db push failed, continuing with reset..."
         fi
         
-        if ! timeout 60 bunx prisma migrate reset --force --skip-generate > "/tmp/prisma-reset-validate-$scenario_name.log" 2>&1; then
+        if ! timeout 60 bunx prisma migrate reset --force --skip-generate --schema=packages/db/prisma/schema.prisma > "/tmp/prisma-reset-validate-$scenario_name.log" 2>&1; then
             log_error "Prisma database reset failed during validation for $scenario_name"
             tail -20 "/tmp/prisma-reset-validate-$scenario_name.log" || true
             return 1
         fi
         
         # Generate Prisma client first
-        if ! timeout 60 bunx prisma generate > "/tmp/prisma-generate-validate-$scenario_name.log" 2>&1; then
+        if ! timeout 60 bunx prisma generate --schema=packages/db/prisma/schema.prisma > "/tmp/prisma-generate-validate-$scenario_name.log" 2>&1; then
             log_error "Prisma generate failed during validation for $scenario_name"
             tail -20 "/tmp/prisma-generate-validate-$scenario_name.log" || true
             return 1
         fi
         
         # Run development migration
-        if ! timeout 60 bunx prisma migrate dev --name "validation-test" --skip-generate > "/tmp/prisma-migrate-validate-$scenario_name.log" 2>&1; then
+        if ! timeout 60 bunx prisma migrate dev --name "validation-test" --skip-generate --schema=packages/db/prisma/schema.prisma > "/tmp/prisma-migrate-validate-$scenario_name.log" 2>&1; then
             log_error "Prisma migrate failed during validation for $scenario_name"
             tail -20 "/tmp/prisma-migrate-validate-$scenario_name.log" || true
             return 1
@@ -334,12 +334,12 @@ validate_code_quality() {
         
         log_success "Prisma ORM validation completed for $scenario_name"
         
-    elif [ -f "drizzle.config.ts" ] || [ -f "drizzle.config.js" ]; then
-        log_info "Found Drizzle configuration, testing ORM functionality..."
+    elif [ -f "packages/db/drizzle.config.ts" ] || [ -f "packages/db/drizzle.config.js" ]; then
+        log_info "Found Drizzle configuration in db package, testing ORM functionality..."
         
         # Reset database to ensure clean state
         log_info "Resetting Drizzle database to clean state..."
-        if timeout 60 bunx drizzle-kit drop --yes > "/tmp/drizzle-reset-validate-$scenario_name.log" 2>&1; then
+        if timeout 60 bunx drizzle-kit drop --yes --config=packages/db/drizzle.config.ts > "/tmp/drizzle-reset-validate-$scenario_name.log" 2>&1; then
             log_success "Database reset completed using drizzle-kit drop"
         else
             log_info "Drop command not available, attempting fresh schema push..."
@@ -349,17 +349,37 @@ validate_code_quality() {
         verify_database_reset "drizzle" "$scenario_name" || return 1
         
         # Generate migration files
-        if ! timeout 60 bunx drizzle-kit generate:pg > "/tmp/drizzle-generate-validate-$scenario_name.log" 2>&1; then
-            log_error "Drizzle generate failed during validation for $scenario_name"
-            tail -20 "/tmp/drizzle-generate-validate-$scenario_name.log" || true
-            return 1
+        if ! timeout 60 bunx drizzle-kit generate --config=packages/db/drizzle.config.ts > "/tmp/drizzle-generate-validate-$scenario_name.log" 2>&1; then
+            # Check if it's a command not found error and try legacy syntax
+            if grep -q "unknown command 'generate'" "/tmp/drizzle-generate-validate-$scenario_name.log" 2>/dev/null; then
+                log_info "Modern generate command failed, trying legacy syntax..."
+                if ! timeout 60 bunx drizzle-kit generate:pg --config=packages/db/drizzle.config.ts > "/tmp/drizzle-generate-legacy-validate-$scenario_name.log" 2>&1; then
+                    log_error "Both modern and legacy Drizzle generate failed during validation for $scenario_name"
+                    tail -20 "/tmp/drizzle-generate-legacy-validate-$scenario_name.log" || true
+                    return 1
+                fi
+            else
+                log_error "Drizzle generate failed during validation for $scenario_name"
+                tail -20 "/tmp/drizzle-generate-validate-$scenario_name.log" || true
+                return 1
+            fi
         fi
         
         # Apply migrations
-        if ! timeout 60 bunx drizzle-kit up:pg > "/tmp/drizzle-migrate-validate-$scenario_name.log" 2>&1; then
-            log_error "Drizzle migrate failed during validation for $scenario_name"
-            tail -20 "/tmp/drizzle-migrate-validate-$scenario_name.log" || true
-            return 1
+        if ! timeout 60 bunx drizzle-kit migrate --config=packages/db/drizzle.config.ts > "/tmp/drizzle-migrate-validate-$scenario_name.log" 2>&1; then
+            # Check if it's a command not found error and try legacy syntax
+            if grep -q "unknown command 'migrate'" "/tmp/drizzle-migrate-validate-$scenario_name.log" 2>/dev/null; then
+                log_info "Modern migrate command failed, trying legacy syntax..."
+                if ! timeout 60 bunx drizzle-kit up:pg --config=packages/db/drizzle.config.ts > "/tmp/drizzle-migrate-legacy-validate-$scenario_name.log" 2>&1; then
+                    log_error "Both modern and legacy Drizzle migrate failed during validation for $scenario_name"
+                    tail -20 "/tmp/drizzle-migrate-legacy-validate-$scenario_name.log" || true
+                    return 1
+                fi
+            else
+                log_error "Drizzle migrate failed during validation for $scenario_name"
+                tail -20 "/tmp/drizzle-migrate-validate-$scenario_name.log" || true
+                return 1
+            fi
         fi
         
         log_success "Drizzle ORM validation completed for $scenario_name"
@@ -872,12 +892,12 @@ test_single_comprehensive_scenario() {
         
         # First, try to drop the database schema entirely using db push with --accept-data-loss
         log_info "Dropping all database objects..."
-        if ! timeout 60 bunx prisma db push --accept-data-loss --skip-generate > "/tmp/prisma-db-drop-$scenario_name.log" 2>&1; then
+        if ! timeout 60 bunx prisma db push --accept-data-loss --skip-generate --schema=packages/db/prisma/schema.prisma > "/tmp/prisma-db-drop-$scenario_name.log" 2>&1; then
             log_info "Initial db push failed, continuing with reset..."
         fi
         
         # Force reset database (drops and recreates migration history)
-        if ! timeout 60 bunx prisma migrate reset --force --skip-generate > "/tmp/prisma-reset-$scenario_name.log" 2>&1; then
+        if ! timeout 60 bunx prisma migrate reset --force --skip-generate --schema=packages/db/prisma/schema.prisma > "/tmp/prisma-reset-$scenario_name.log" 2>&1; then
             log_error "Prisma database reset failed for $scenario_name"
             tail -20 "/tmp/prisma-reset-$scenario_name.log" || true
             return 1
@@ -886,7 +906,7 @@ test_single_comprehensive_scenario() {
         
         # Generate Prisma client first (before migrations)
         log_info "Generating Prisma client..."
-        if ! timeout 60 bunx prisma generate > "/tmp/prisma-generate-$scenario_name.log" 2>&1; then
+        if ! timeout 60 bunx prisma generate --schema=packages/db/prisma/schema.prisma > "/tmp/prisma-generate-$scenario_name.log" 2>&1; then
             log_error "Prisma generate failed for $scenario_name"
             tail -20 "/tmp/prisma-generate-$scenario_name.log" || true
             return 1
@@ -895,7 +915,7 @@ test_single_comprehensive_scenario() {
         
         # Run development migration (this creates the database schema)
         log_info "Running Prisma migration..."
-        if ! timeout 60 bunx prisma migrate dev --name "test-migration" --skip-generate > "/tmp/prisma-migrate-$scenario_name.log" 2>&1; then
+        if ! timeout 60 bunx prisma migrate dev --name "test-migration" --skip-generate --schema=packages/db/prisma/schema.prisma > "/tmp/prisma-migrate-$scenario_name.log" 2>&1; then
             log_error "Prisma migrate failed for $scenario_name"
             tail -20 "/tmp/prisma-migrate-$scenario_name.log" || true
             return 1
@@ -907,13 +927,13 @@ test_single_comprehensive_scenario() {
         log_info "Resetting Drizzle database to clean state..."
         
         # Try to drop all tables using drizzle-kit (if available)
-        if timeout 60 bunx drizzle-kit drop --yes > "/tmp/drizzle-reset-$scenario_name.log" 2>&1; then
+        if timeout 60 bunx drizzle-kit drop --yes --config=packages/db/drizzle.config.ts > "/tmp/drizzle-reset-$scenario_name.log" 2>&1; then
             log_success "Database reset completed using drizzle-kit drop"
         else
             # If drop command is not available, try to reset using push with --force
             log_info "Drop command not available, attempting fresh schema push..."
-            if timeout 60 bunx drizzle-kit push:pg --force > "/tmp/drizzle-push-reset-$scenario_name.log" 2>&1; then
-                log_success "Database reset completed using push:pg --force"
+            if timeout 60 bunx drizzle-kit push --force --config=packages/db/drizzle.config.ts > "/tmp/drizzle-push-reset-$scenario_name.log" 2>&1; then
+                log_success "Database reset completed using push --force"
             else
                 log_info "Manual reset not available, continuing with migration (may have conflicts)..."
             fi
@@ -925,19 +945,39 @@ test_single_comprehensive_scenario() {
         
         # Generate migration files
         log_info "Generating Drizzle migration files..."
-        if ! timeout 60 bunx drizzle-kit generate:pg > "/tmp/drizzle-generate-$scenario_name.log" 2>&1; then
-            log_error "Drizzle generate failed for $scenario_name"
-            tail -20 "/tmp/drizzle-generate-$scenario_name.log" || true
-            return 1
+        if ! timeout 60 bunx drizzle-kit generate --config=packages/db/drizzle.config.ts > "/tmp/drizzle-generate-$scenario_name.log" 2>&1; then
+            # Check if it's a command not found error and try legacy syntax
+            if grep -q "unknown command 'generate'" "/tmp/drizzle-generate-$scenario_name.log" 2>/dev/null; then
+                log_info "Modern generate command failed, trying legacy syntax..."
+                if ! timeout 60 bunx drizzle-kit generate:pg --config=packages/db/drizzle.config.ts > "/tmp/drizzle-generate-legacy-$scenario_name.log" 2>&1; then
+                    log_error "Both modern and legacy Drizzle generate failed for $scenario_name"
+                    tail -20 "/tmp/drizzle-generate-legacy-$scenario_name.log" || true
+                    return 1
+                fi
+            else
+                log_error "Drizzle generate failed for $scenario_name"
+                tail -20 "/tmp/drizzle-generate-$scenario_name.log" || true
+                return 1
+            fi
         fi
         log_success "Drizzle migration files generated"
         
         # Apply migrations
         log_info "Applying Drizzle migrations..."
-        if ! timeout 60 bunx drizzle-kit up:pg > "/tmp/drizzle-migrate-$scenario_name.log" 2>&1; then
-            log_error "Drizzle migrate failed for $scenario_name"
-            tail -20 "/tmp/drizzle-migrate-$scenario_name.log" || true
-            return 1
+        if ! timeout 60 bunx drizzle-kit migrate --config=packages/db/drizzle.config.ts > "/tmp/drizzle-migrate-$scenario_name.log" 2>&1; then
+            # Check if it's a command not found error and try legacy syntax
+            if grep -q "unknown command 'migrate'" "/tmp/drizzle-migrate-$scenario_name.log" 2>/dev/null; then
+                log_info "Modern migrate command failed, trying legacy syntax..."
+                if ! timeout 60 bunx drizzle-kit up:pg --config=packages/db/drizzle.config.ts > "/tmp/drizzle-migrate-legacy-$scenario_name.log" 2>&1; then
+                    log_error "Both modern and legacy Drizzle migrate failed for $scenario_name"
+                    tail -20 "/tmp/drizzle-migrate-legacy-$scenario_name.log" || true
+                    return 1
+                fi
+            else
+                log_error "Drizzle migrate failed for $scenario_name"
+                tail -20 "/tmp/drizzle-migrate-$scenario_name.log" || true
+                return 1
+            fi
         fi
         log_success "Drizzle migrations applied"
     fi
@@ -1058,7 +1098,7 @@ verify_database_reset() {
     elif [ "$orm_type" = "drizzle" ]; then
         # Verify Drizzle can connect and push schema
         log_info "Verifying Drizzle database connection..."
-        if ! timeout 30 bunx drizzle-kit push:pg --force > "/tmp/drizzle-verify-$scenario_name.log" 2>&1; then
+        if ! timeout 30 bunx drizzle-kit push --force --config=packages/db/drizzle.config.ts > "/tmp/drizzle-verify-$scenario_name.log" 2>&1; then
             log_error "Failed to verify Drizzle database connection"
             tail -10 "/tmp/drizzle-verify-$scenario_name.log" || true
             return 1

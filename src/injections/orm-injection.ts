@@ -24,14 +24,19 @@ export async function addOrmEndpoints(appPath: string, framework: string, orm: O
 		return;
 	}
 
+	// Get the project name from the app path (e.g., /path/to/project/apps/myapp -> project)
+	const pathParts = appPath.split("/");
+	const appsIndex = pathParts.findIndex((part) => part === "apps");
+	const projectName = appsIndex > 0 ? pathParts[appsIndex - 1]! : "project";
+
 	const indexContent = await readFile(indexPath, "utf-8");
 
 	let updatedContent: string;
 
 	if (framework === "express") {
-		updatedContent = addExpressOrmEndpoints(indexContent, orm);
+		updatedContent = addExpressOrmEndpoints(indexContent, orm, projectName);
 	} else if (framework === "hono") {
-		updatedContent = addHonoOrmEndpoints(indexContent, orm);
+		updatedContent = addHonoOrmEndpoints(indexContent, orm, projectName);
 	} else {
 		// For other frameworks or future support
 		return;
@@ -43,12 +48,12 @@ export async function addOrmEndpoints(appPath: string, framework: string, orm: O
 /**
  * Add ORM endpoints to Express apps
  */
-function addExpressOrmEndpoints(content: string, orm: OrmConfig): string {
-	const importPrefixStatement = orm.type === "drizzle" ? `\nimport { eq } from "drizzle-orm";\n` : "";
-	const importSuffixStatement =
+function addExpressOrmEndpoints(content: string, orm: OrmConfig, projectName: string): string {
+	const importPrefixStatement =
 		orm.type === "drizzle"
-			? `import { db } from "../../../src/lib/db";\nimport { type NewUser, users } from "../../../src/lib/schema";`
-			: `import { db } from "../../../src/lib/db";`;
+			? `import { db, type NewUser, users } from "@${projectName}/db";\n`
+			: `import { db } from "@${projectName}/db";\n`;
+	const importAfterCorsImportStatement = orm.type === "drizzle" ? `\nimport { eq } from "drizzle-orm";\n` : "";
 
 	const userRoutes =
 		orm.type === "drizzle"
@@ -126,9 +131,8 @@ app.get("/api/users/:id", async (req, res) => {
 
 	// Add imports at the top (eq import is already included in importStatement for drizzle)
 	const withImports = content
-		.replace(IMPORT_LINE_REGEX, (match) => match)
-		.replace(LAST_IMPORT_REGEX, `$1${importSuffixStatement}\n\n`)
-		.replace(AFTER_IMPORT_EXPRESS_REGEX, (match) => `${match}${importPrefixStatement}`);
+		.replace("", importPrefixStatement ? `${importPrefixStatement}\n` : "")
+		.replace(AFTER_IMPORT_EXPRESS_REGEX, (match) => `${match}${importAfterCorsImportStatement}`);
 
 	// Add routes before the server start
 	return withImports.replace(
@@ -141,12 +145,11 @@ app.listen(`,
 /**
  * Add ORM endpoints to Hono apps
  */
-function addHonoOrmEndpoints(content: string, orm: OrmConfig): string {
-	const importPrefixStatement = orm.type === "drizzle" ? `import { eq } from "drizzle-orm";\n` : "";
-	const importSuffixStatement =
+function addHonoOrmEndpoints(content: string, orm: OrmConfig, projectName: string): string {
+	const importPrefixStatement =
 		orm.type === "drizzle"
-			? `import { db } from "../../../src/lib/db";\nimport { type NewUser, users } from "../../../src/lib/schema";`
-			: `import { db } from "../../../src/lib/db";`;
+			? `import { db, type NewUser, users } from "@${projectName}/db";\nimport { eq } from "drizzle-orm";\n`
+			: `import { db } from "@${projectName}/db";\n`;
 
 	const userRoutes =
 		orm.type === "drizzle"
@@ -228,7 +231,7 @@ app.get("/api/users/:id", async (c) => {
 	// Add imports at the top (eq import is already included in importStatement for drizzle)
 	const withImports = content
 		.replace(IMPORT_LINE_REGEX, (match) => match)
-		.replace(LAST_IMPORT_REGEX, `${importPrefixStatement}$1${importSuffixStatement}\n\n`);
+		.replace(LAST_IMPORT_REGEX, `${importPrefixStatement}$1`);
 
 	// Add routes before the export default
 	return withImports.replace(

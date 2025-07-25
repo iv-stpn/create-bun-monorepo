@@ -2,9 +2,10 @@
  * ORM (Object-Relational Mapping) utilities for database setup
  */
 
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { OrmConfig, OrmType } from "../types";
+import { writeJsonFile } from "../utils/file";
 
 /**
  * Get ORM configuration based on user choice
@@ -33,8 +34,8 @@ export function getOrmDependencies(ormConfig: OrmConfig): {
 	const devDependencies: Record<string, string> = {};
 
 	if (type === "drizzle") {
-		dependencies["drizzle-orm"] = "^0.29.0";
-		devDependencies["drizzle-kit"] = "^0.20.0";
+		dependencies["drizzle-orm"] = "^0.44.0";
+		devDependencies["drizzle-kit"] = "^0.31.0";
 
 		// Database-specific drivers
 		switch (database) {
@@ -70,21 +71,21 @@ export function getOrmScripts(ormConfig: OrmConfig): Record<string, string> {
 
 	if (type === "drizzle") {
 		return {
-			"db:generate": "drizzle-kit generate",
-			"db:migrate": "drizzle-kit migrate",
-			"db:studio": "drizzle-kit studio",
-			"db:push": "drizzle-kit push",
+			"db:generate": "drizzle-kit generate --config=packages/db/drizzle.config.ts",
+			"db:migrate": "drizzle-kit migrate --config=packages/db/drizzle.config.ts",
+			"db:studio": "drizzle-kit studio --config=packages/db/drizzle.config.ts",
+			"db:push": "drizzle-kit push --config=packages/db/drizzle.config.ts",
 		};
 	}
 
 	if (type === "prisma") {
 		return {
-			"db:generate": "prisma generate",
-			"db:migrate": "prisma migrate dev",
-			"db:studio": "prisma studio",
-			"db:push": "prisma db push",
-			"db:reset": "prisma migrate reset",
-			"db:seed": "bun run src/lib/seed.ts",
+			"db:generate": "prisma generate --schema=packages/db/prisma/schema.prisma",
+			"db:migrate": "prisma migrate dev --schema=packages/db/prisma/schema.prisma",
+			"db:studio": "prisma studio --schema=packages/db/prisma/schema.prisma",
+			"db:push": "prisma db push --schema=packages/db/prisma/schema.prisma",
+			"db:reset": "prisma migrate reset --schema=packages/db/prisma/schema.prisma",
+			"db:seed": "bun run packages/db/src/seed.ts",
 		};
 	}
 
@@ -105,23 +106,34 @@ export async function createOrmSetup(rootPath: string, orm: OrmConfig): Promise<
 }
 
 /**
- * Create Drizzle ORM setup files
+ * Create Drizzle ORM setup files in the db package
  */
 async function createDrizzleSetup(rootPath: string, database: "postgresql" | "mysql" | "sqlite"): Promise<void> {
-	// Create lib directory
-	await mkdir(join(rootPath, "src", "lib"), { recursive: true });
+	// Create db package directory
+	const dbPackagePath = join(rootPath, "packages", "db");
+	await mkdir(join(dbPackagePath, "src"), { recursive: true });
+
+	// Update package.json with Drizzle dependencies
+	await updateDbPackageJson(dbPackagePath, "drizzle", database);
 
 	// Create database connection file
 	const dbContent = getDrizzleDbContent(database);
-	await writeFile(join(rootPath, "src", "lib", "db.ts"), dbContent, { encoding: "utf-8" });
+	await writeFile(join(dbPackagePath, "src", "client.ts"), dbContent, { encoding: "utf-8" });
 
 	// Create schema file with User model
 	const schemaContent = getDrizzleSchemaContent(database);
-	await writeFile(join(rootPath, "src", "lib", "schema.ts"), schemaContent, { encoding: "utf-8" });
+	await writeFile(join(dbPackagePath, "src", "schema.ts"), schemaContent, { encoding: "utf-8" });
+
+	// Update index.ts to export everything
+	const indexContent = `export * from "./client";
+export * from "./schema";
+`;
+
+	await writeFile(join(dbPackagePath, "src", "index.ts"), indexContent, { encoding: "utf-8" });
 
 	// Create Drizzle config
 	const configContent = getDrizzleConfigContent(database);
-	await writeFile(join(rootPath, "drizzle.config.ts"), configContent, { encoding: "utf-8" });
+	await writeFile(join(dbPackagePath, "drizzle.config.ts"), configContent, { encoding: "utf-8" });
 
 	// Create environment file
 	const envContent = getDrizzleEnvContent(database);
@@ -129,28 +141,121 @@ async function createDrizzleSetup(rootPath: string, database: "postgresql" | "my
 }
 
 /**
- * Create Prisma ORM setup files
+ * Create Prisma ORM setup files in the db package
  */
 async function createPrismaSetup(rootPath: string, database: "postgresql" | "mysql" | "sqlite"): Promise<void> {
-	// Create lib directory
-	await mkdir(join(rootPath, "src", "lib"), { recursive: true });
+	// Create db package directory
+	const dbPackagePath = join(rootPath, "packages", "db");
+	await mkdir(join(dbPackagePath, "src"), { recursive: true });
+
+	// Update package.json with Prisma dependencies
+	await updateDbPackageJson(dbPackagePath, "prisma", database);
 
 	// Create Prisma client file
 	const clientContent = getPrismaClientContent();
-	await writeFile(join(rootPath, "src", "lib", "db.ts"), clientContent, { encoding: "utf-8" });
+	await writeFile(join(dbPackagePath, "src", "client.ts"), clientContent, { encoding: "utf-8" });
+
+	// Update index.ts to export everything
+	const indexContent = `export * from "./client";
+// Note: Prisma types will be available after running 'bun run db:generate'
+// export type { User } from "@prisma/client";
+`;
+	await writeFile(join(dbPackagePath, "src", "index.ts"), indexContent, { encoding: "utf-8" });
 
 	// Create Prisma schema with User model
-	await mkdir(join(rootPath, "prisma"), { recursive: true });
+	await mkdir(join(dbPackagePath, "prisma"), { recursive: true });
 	const schemaContent = getPrismaSchemaContent(database);
-	await writeFile(join(rootPath, "prisma", "schema.prisma"), schemaContent, { encoding: "utf-8" });
+	await writeFile(join(dbPackagePath, "prisma", "schema.prisma"), schemaContent, { encoding: "utf-8" });
 
 	// Create seed file
 	const seedContent = getPrismaSeedContent();
-	await writeFile(join(rootPath, "src", "lib", "seed.ts"), seedContent, { encoding: "utf-8" });
+	await writeFile(join(dbPackagePath, "src", "seed.ts"), seedContent, { encoding: "utf-8" });
 
 	// Create environment file
 	const envContent = getPrismaEnvContent(database);
 	await writeFile(join(rootPath, ".env.example"), envContent, { encoding: "utf-8" });
+}
+
+/**
+ * Update db package.json with ORM-specific dependencies and scripts
+ */
+async function updateDbPackageJson(
+	dbPackagePath: string,
+	ormType: "drizzle" | "prisma",
+	database: "postgresql" | "mysql" | "sqlite",
+): Promise<void> {
+	const packageJsonPath = join(dbPackagePath, "package.json");
+
+	// Read existing package.json
+	const packageJsonContent = await readFile(packageJsonPath, "utf-8");
+	const packageJson = JSON.parse(packageJsonContent);
+
+	// Add ORM dependencies
+	if (ormType === "drizzle") {
+		packageJson.dependencies = {
+			...packageJson.dependencies,
+			"drizzle-orm": "^0.44.0",
+		};
+
+		// Add database-specific drivers
+		switch (database) {
+			case "postgresql":
+				packageJson.dependencies.postgres = "^3.4.0";
+				break;
+			case "mysql":
+				packageJson.dependencies.mysql2 = "^3.6.0";
+				break;
+			case "sqlite":
+				packageJson.dependencies["better-sqlite3"] = "^9.0.0";
+				packageJson.devDependencies = {
+					...packageJson.devDependencies,
+					"@types/better-sqlite3": "^7.6.0",
+				};
+				break;
+		}
+
+		packageJson.devDependencies = {
+			...packageJson.devDependencies,
+			"drizzle-kit": "^0.31.0",
+		};
+
+		// Add Drizzle scripts
+		packageJson.scripts = {
+			...packageJson.scripts,
+			"db:generate": "drizzle-kit generate --config=./drizzle.config.ts",
+			"db:push": "drizzle-kit push --config=./drizzle.config.ts",
+			"db:migrate": "drizzle-kit migrate --config=./drizzle.config.ts",
+			"db:studio": "drizzle-kit studio --config=./drizzle.config.ts",
+		};
+	} else if (ormType === "prisma") {
+		packageJson.dependencies = {
+			...packageJson.dependencies,
+			"@prisma/client": "^5.0.0",
+		};
+
+		packageJson.devDependencies = {
+			...packageJson.devDependencies,
+			prisma: "^5.0.0",
+		};
+
+		// Add Prisma scripts
+		packageJson.scripts = {
+			...packageJson.scripts,
+			"db:generate": "prisma generate --schema=./prisma/schema.prisma",
+			"db:push": "prisma db push --schema=./prisma/schema.prisma",
+			"db:migrate": "prisma migrate dev --schema=./prisma/schema.prisma",
+			"db:studio": "prisma studio --schema=./prisma/schema.prisma",
+			"db:seed": "bun run src/seed.ts",
+		};
+
+		// Add Prisma configuration
+		packageJson.prisma = {
+			schema: "./prisma/schema.prisma",
+		};
+	}
+
+	// Write updated package.json
+	await writeJsonFile(packageJsonPath, packageJson);
 }
 
 /**
@@ -245,7 +350,7 @@ export function getDrizzleConfigContent(database: "postgresql" | "mysql" | "sqli
 	return `import type { Config } from "drizzle-kit";
 
 export default {
-	schema: "./src/lib/schema.ts",
+	schema: "./src/schema.ts",
 	out: "./drizzle",
 	dialect: "${dialect}",
 	dbCredentials: {
@@ -321,7 +426,7 @@ model User {
  * Generate Prisma seed content
  */
 export function getPrismaSeedContent(): string {
-	return `import { db } from "./db";
+	return `import { db } from "./client";
 
 async function main() {
 	// Create sample user

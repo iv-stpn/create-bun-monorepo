@@ -361,33 +361,54 @@ async function addToExistingMonorepo(monorepoInfo: MonorepoStructure, options: A
 		await mkdir(join(rootPath, "packages"), { recursive: true });
 	}
 
+	// Add db package to packages list if ORM is being added
+	const finalPackages = [...addPackages];
+	if (addOrmSetup && addOrmSetup.type !== "none") {
+		// Check if db package is already included
+		const hasDbPackage = finalPackages.some((pkg) => pkg.name === "db");
+		if (!hasDbPackage) {
+			finalPackages.push({
+				name: "db",
+				template: "db",
+				category: "packages",
+			});
+		}
+
+		// Ensure packages directory exists for db package
+		if (!monorepoInfo.hasPackagesDir) {
+			await mkdir(join(rootPath, "packages"), { recursive: true });
+		}
+	}
+
 	// Update package.json workspaces
-	await updatePackageJsonWorkspaces(monorepoInfo, addApps.length > 0, addPackages.length > 0, addOrmSetup);
+	await updatePackageJsonWorkspaces(monorepoInfo, addApps.length > 0, finalPackages.length > 0, addOrmSetup);
 
 	// Create apps
 	for (const app of addApps) {
 		await createApp(
 			rootPath,
 			app,
-			[...monorepoInfo.packages, ...addPackages.map((p) => p.name)],
+			[...monorepoInfo.packages, ...finalPackages.map((p) => p.name)],
 			addOrmSetup,
-			addPackages,
+			finalPackages,
 		);
 	}
 
-	// Create packages
-	for (const pkg of addPackages) {
-		await createPackage(rootPath, pkg);
+	// Create packages (excluding db package as it will be created by createOrmSetup)
+	for (const pkg of finalPackages) {
+		if (pkg.name !== "db") {
+			await createPackage(rootPath, pkg);
+		}
 	}
 
-	// Add ORM setup
+	// Add ORM setup (this will create the db package)
 	if (addOrmSetup && addOrmSetup.type !== "none") {
 		await createOrmSetup(rootPath, addOrmSetup);
 		await addDockerCompose(rootPath, addOrmSetup);
 	}
 
-	// Update TypeScript references
-	await updateTsConfigReferences(monorepoInfo, addApps, addPackages);
+	// Update TypeScript references (include db package if ORM was added)
+	await updateTsConfigReferences(monorepoInfo, addApps, finalPackages);
 }
 
 async function updatePackageJsonWorkspaces(
@@ -591,7 +612,7 @@ async function createPrismaSetup(rootPath: string, database: "postgresql" | "mys
 	const schemaContent = getPrismaSchemaContent(database);
 	await writeFile(join(rootPath, "prisma", "schema.prisma"), schemaContent, { encoding: "utf-8" });
 
-	const seedContent = getPrismaSeedContent();
+	const seedContent = getPrismaSeedContent().replace('from "./client"', 'from "./db"');
 	await writeFile(join(rootPath, "src", "lib", "seed.ts"), seedContent, { encoding: "utf-8" });
 
 	const envContent = getPrismaEnvContent(database);
@@ -899,12 +920,25 @@ async function addSingleAppToMonorepo(monorepoInfo: MonorepoStructure, appToAdd:
 async function addOrmToMonorepo(monorepoInfo: MonorepoStructure, ormConfig: OrmConfig): Promise<void> {
 	const { rootPath } = monorepoInfo;
 
+	// Ensure packages directory exists for db package
+	if (!monorepoInfo.hasPackagesDir) {
+		await mkdir(join(rootPath, "packages"), { recursive: true });
+	}
+
 	// Update package.json with ORM dependencies
 	await updatePackageJsonWithOrmDeps(monorepoInfo, ormConfig);
 
-	// Create ORM setup
+	// Create ORM setup (this will create the db package)
 	await createOrmSetup(rootPath, ormConfig);
 	await addDockerCompose(rootPath, ormConfig);
+
+	// Add db package to TypeScript references
+	const dbPackage: PackageTemplate = {
+		name: "db",
+		template: "db",
+		category: "packages",
+	};
+	await updateTsConfigReferences(monorepoInfo, [], [dbPackage]);
 }
 
 async function updatePackageJsonForSinglePackage(monorepoInfo: MonorepoStructure): Promise<void> {

@@ -129,6 +129,11 @@ const TEMPLATES_CONFIG: TemplatesConfig = {
 					description: "Reusable React Native components for mobil apps & web apps with a RN/Expo adapter.",
 					path: "packages/ui-native",
 				},
+				db: {
+					name: "Database",
+					description: "Database client and schemas with ORM support",
+					path: "packages/db",
+				},
 			},
 		},
 	},

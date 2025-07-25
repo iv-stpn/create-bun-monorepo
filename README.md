@@ -132,10 +132,13 @@ my-app/
 When you choose to add an ORM (Prisma or Drizzle), the scaffolder automatically:
 
 - 📋 Sets up the ORM configuration and schema
+- 🗃️ **Creates a dedicated `db` package** containing database client and schemas
 - 🐳 Generates `docker-compose.dev.yml` for database development
 - 🔧 Configures environment variables
 - 📦 Installs necessary dependencies
 - 🔗 Adds database scripts to package.json
+
+> **Note**: The `db` package is automatically included when you select an ORM and is not shown in the package selection menu. All apps that need database access import from `@{your-project}/db`.
 
 ### Supported Databases
 
@@ -198,6 +201,14 @@ bun run dev       # Start development
 - Automatically adds workspace dependencies from packages to apps
 - Uses workspace protocol for proper linking
 - All projects use TypeScript for consistency and type safety
+
+### Database & ORM Support
+
+- **Automatic DB Package**: When ORM is enabled, automatically creates a `@{project}/db` package
+- **Centralized Database Logic**: All ORM schemas, clients, and configurations are in the dedicated db package
+- **Framework Integration**: Apps automatically import from the db package with proper TypeScript support
+- **Prisma & Drizzle**: Full support for both ORMs with auto-generated schemas and client setup
+- **Docker Development**: Includes `docker-compose.dev.yml` for local database development
 
 ## Development
 
