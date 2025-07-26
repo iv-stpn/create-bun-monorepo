@@ -19,6 +19,6 @@
 		"skipLibCheck": true,
 		"strict": true
 	},
-	"include": ["**/*", "**/.server/**/*", "**/.client/**/*", ".react-router/types/**/*"],
+	"include": ["svg.d.ts", "**/*", "**/.server/**/*", "**/.client/**/*", ".react-router/types/**/*"],
 	"exclude": ["node_modules", "dist"]
 }

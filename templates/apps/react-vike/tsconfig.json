@@ -15,5 +15,6 @@
 		"jsx": "react-jsx",
 		"jsxImportSource": "react"
 	},
-	"exclude": ["dist"]
+	"exclude": ["dist"],
+	"include": ["**/*.ts", "**/*.tsx", "vite.config.ts", "svg.d.ts"]
 }
