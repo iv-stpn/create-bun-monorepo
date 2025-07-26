@@ -13,6 +13,7 @@ module.exports = {
 	},
 	module: {
 		rules: [
+			{ test: /\.css$/, use: ["style-loader", "css-loader", "postcss-loader"] },
 			{
 				test: /\.(ts|tsx)$/,
 				exclude: /node_modules/,
@@ -27,19 +28,8 @@ module.exports = {
 					},
 				},
 			},
-			{
-				test: /\.css$/,
-				use: ["style-loader", "css-loader"],
-			},
 		],
 	},
-	plugins: [
-		new HtmlWebpackPlugin({
-			template: "./public/index.html",
-		}),
-	],
-	devServer: {
-		port: 3001,
-		open: true,
-	},
+	plugins: [new HtmlWebpackPlugin({ template: "./public/index.html" })],
+	devServer: { port: 3001, open: true },
 };

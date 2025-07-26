@@ -6,6 +6,7 @@ module.exports = {
 	mode: "development",
 	module: {
 		rules: [
+			{ test: /\.css$/, use: ["style-loader", "css-loader", "postcss-loader"] },
 			{
 				test: /\.(js|jsx|ts|tsx)$/,
 				exclude: /node_modules/,

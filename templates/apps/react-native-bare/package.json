@@ -7,7 +7,6 @@
 		"ios": "react-native run-ios",
 		"web:dev": "webpack serve --mode development --config webpack.config.web.js",
 		"web:build": "webpack --mode production --config webpack.config.web.js",
-		"lint": "eslint . --ext .js,.jsx,.ts,.tsx",
 		"start": "react-native start",
 		"test": "jest",
 		"build": "echo 'React Native projects bundle at runtime. Use react-native run-android/ios to build and run. Initiating web build instead...' && bun web:build",
@@ -20,8 +19,10 @@
 		"react-native-web": "^0.20",
 		"@react-navigation/native": "^7",
 		"@react-navigation/native-stack": "^7",
+		"react-native-reanimated": "^4",
+		"react-native-safe-area-context": "^5",
 		"react-native-screens": "^4",
-		"react-native-safe-area-context": "^5"
+		"react-native-svg-transformer": "^1"
 	},
 	"devDependencies": {
 		"@babel/core": "^7",
@@ -32,20 +33,19 @@
 		"@react-native/typescript-config": "^0.80",
 		"@types/react": "^19",
 		"@types/react-native": "latest",
-		"@types/react-test-renderer": "^19",
-		"babel-jest": "^30",
+		"autoprefixer": "^10",
 		"babel-loader": "^9",
+		"css-loader": "^7",
 		"html-webpack-plugin": "^5",
 		"metro-react-native-babel-preset": "^0.77",
 		"nativewind": "^4",
-		"react-test-renderer": "^19",
+		"postcss": "^8",
+		"postcss-loader": "^8",
+		"style-loader": "^4",
 		"tailwindcss": "^3",
 		"typescript": "^5",
 		"webpack": "^5",
 		"webpack-cli": "^5",
 		"webpack-dev-server": "^5"
-	},
-	"engines": {
-		"node": ">=20"
 	}
 }

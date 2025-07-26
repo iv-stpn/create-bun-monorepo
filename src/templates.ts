@@ -46,6 +46,11 @@ const TEMPLATES_CONFIG: TemplatesConfig = {
 					description: "React application with Webpack bundler",
 					path: "apps/react-webpack",
 				},
+				"react-vike": {
+					name: "React + Vike",
+					description: "Full-stack React framework with Vike for SSR/SPA",
+					path: "apps/react-vike",
+				},
 				nextjs: {
 					name: "Next.js",
 					description: "Full-stack React framework with SSR/SSG",
@@ -140,7 +145,7 @@ const TEMPLATES_CONFIG: TemplatesConfig = {
 } as const;
 
 // Full-stack frameworks that can use ORMs (even though they're in frontend category)
-const FULLSTACK_FRAMEWORKS = ["nextjs", "nextjs-solito", "react-router"];
+const FULLSTACK_FRAMEWORKS = ["nextjs", "nextjs-solito", "react-router", "react-vike"];
 const BACKEND_FRAMEWORKS = ["express", "hono", "nestjs"];
 const MOBILE_FRAMEWORKS = ["react-native-expo", "react-native-bare"];
 

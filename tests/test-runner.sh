@@ -421,6 +421,8 @@ get_app_port() {
         echo "3001"
     elif grep -q "react-router" "$app_dir/package.json" 2>/dev/null; then
         echo "3004"
+    elif grep -q "vike" "$app_dir/package.json" 2>/dev/null; then
+        echo "3005"
     else
         echo "3000"  # Default
     fi
@@ -597,6 +599,12 @@ run_playwright_for_template() {
                         break
                     fi
                     ;;
+                "react-vike")
+                    if [[ "$dir_name" =~ (web|frontend) ]] && grep -q "vike" "$dir/package.json" 2>/dev/null; then
+                        app_dir="$dir"
+                        break
+                    fi
+                    ;;
                 "nextjs")
                     if [[ "$dir_name" =~ (web|frontend) ]] && grep -q "next" "$dir/package.json" 2>/dev/null; then
                         app_dir="$dir"
@@ -699,7 +707,7 @@ test_all_scenarios() {
     log_section "TESTING ALL SCENARIOS WITH COMPREHENSIVE MONOREPO"
     
     # All available app templates
-    local all_apps="react-vite[react-vite],react-native-expo[react-native-expo],express[express],nextjs[nextjs],react-router[react-router],hono[hono],nestjs[nestjs],react-webpack[react-webpack],react-native-bare[react-native-bare],nextjs-solito[nextjs-solito]"
+    local all_apps="react-vite[react-vite],react-native-expo[react-native-expo],express[express],nextjs[nextjs],react-router[react-router],react-vike[react-vike],hono[hono],nestjs[nestjs],react-webpack[react-webpack],react-native-bare[react-native-bare],nextjs-solito[nextjs-solito]"
 
     # Package configurations
     local all_packages="ui,ui-native,utils,schemas,hooks,blank1,blank2"
@@ -1000,7 +1008,7 @@ test_single_comprehensive_scenario() {
     fi
     
     # Test all apps to ensure they build
-    local test_apps=("react-vite" "react-native-expo" "nextjs" "react-router" "hono" "nestjs" "react-webpack" "react-native-bare" "nextjs-solito")
+    local test_apps=("react-vite" "react-native-expo" "nextjs" "react-router" "react-vike" "hono" "nestjs" "react-webpack" "react-native-bare" "nextjs-solito")
     for app in "${test_apps[@]}"; do
         if [ -d "apps/$app" ]; then
             # Build from root using workspace filtering to ensure dependencies are resolved

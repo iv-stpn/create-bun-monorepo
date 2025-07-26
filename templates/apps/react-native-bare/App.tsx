@@ -1,3 +1,5 @@
+import "./global.css";
+
 import { useState } from "react";
 import { SafeAreaView, StatusBar, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from "react-native";
 

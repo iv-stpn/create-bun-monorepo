@@ -4,7 +4,5 @@ import { defineConfig } from "vite";
 
 export default defineConfig({
 	plugins: [vike(), react()],
-	build: {
-		target: "es2022",
-	},
+	server: { port: 3005 },
 });

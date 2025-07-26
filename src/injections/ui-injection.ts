@@ -9,6 +9,11 @@ const REACT_IMPORT_REGEX = /import { useState } from "react";/;
 const REACT_BUTTON_REGEX = /<button type="button" onClick=\{[^}]+\}>\s*count is \{count\}\s*<\/button>/;
 const WEBPACK_BUTTON_REGEX = /<button\s+[^>]*onClick=\{[^}]+\}[^>]*>\s*Count: \{count\}\s*<\/button>/;
 
+// React Vike patterns
+const REACT_VIKE_IMPORT_REGEX = /import { useState } from "react";/;
+const REACT_VIKE_BUTTON_REGEX =
+	/<button\s+type="button"\s+className=\{[^}]+\}\s+onClick=\{[^}]+\}\s*>\s*Counter \{count\}\s*<\/button>/;
+
 // Solito/Next.js Solito patterns
 const SOLITO_LINK_REGEX = /import { Link } from "solito\/link";/;
 const SOLITO_HOME_REGEX = /export default function Home\(\) \{/;
@@ -42,6 +47,11 @@ export async function injectUIComponentDemos(
 		case "react-webpack":
 			if (hasUIPackage) {
 				await injectReactUIDemo(appPath, projectName);
+			}
+			break;
+		case "react-vike":
+			if (hasUIPackage) {
+				await injectReactVikeUIDemo(appPath, projectName);
 			}
 			break;
 		case "nextjs":
@@ -212,6 +222,44 @@ async function injectReactNativeUIDemo(appPath: string, projectName: string): Pr
 		await writeFile(appFilePath, updatedContent, "utf-8");
 	} catch (_error) {
 		console.warn(chalk.yellow(`Warning: Could not inject UI-Native demo into ${appFilePath}`));
+	}
+}
+
+/**
+ * Inject UI component demo into React Vike apps
+ */
+async function injectReactVikeUIDemo(appPath: string, projectName: string): Promise<void> {
+	const counterFilePath = join(appPath, "pages", "index", "Counter.tsx");
+	try {
+		const content = await readFile(counterFilePath, "utf-8");
+
+		const updatedContent = content
+			.replace(
+				REACT_VIKE_IMPORT_REGEX,
+				`import { Button } from "@${projectName}/ui";
+import { useState } from "react";`,
+			)
+			.replace(
+				REACT_VIKE_BUTTON_REGEX,
+				`<>
+			<button
+				type="button"
+				className={
+					"inline-block border border-black rounded bg-gray-200 px-2 py-1 text-xs font-medium uppercase leading-normal"
+				}
+				onClick={() => setCount((count) => count + 1)}
+			>
+				Counter {count}
+			</button>
+			<Button onClick={() => setCount((count) => count + 1)} className="ml-2">
+				UI Component {count}
+			</Button>
+		</>`,
+			);
+
+		await writeFile(counterFilePath, updatedContent, "utf-8");
+	} catch (error) {
+		console.warn(chalk.yellow(`Warning: Could not inject UI demo into ${counterFilePath}: ${error}`));
 	}
 }
 
