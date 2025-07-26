@@ -1,5 +1,11 @@
 # create-bun-monorepo
 
+## 1.1.2
+
+### Patch Changes
+
+- [`3e1791e`](https://github.com/iv-stpn/create-bun-monorepo/commit/3e1791e3e86a89cf063c2f5276be5e38ccdbe6a6) Thanks [@iv-stpn](https://github.com/iv-stpn)! - Fix missing templates in NPM bundle.
+
 ## 1.1.1
 
 ### Patch Changes
