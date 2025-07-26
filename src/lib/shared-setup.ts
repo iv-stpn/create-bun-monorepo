@@ -1,4 +1,4 @@
-import { cp, mkdir, readFile, writeFile } from "node:fs/promises";
+import { access, cp, mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { rootPath } from "../constants";
@@ -70,6 +70,16 @@ async function copyTemplateFiles(
 
 	if (!templateInfo?.path) throw new Error(`Template ${template} in category ${category} not found`);
 	const templatePath = join(rootPath, "templates", templateInfo.path);
+
+	// Verify template path exists before copying
+	try {
+		await access(templatePath);
+	} catch {
+		console.error(`❌ Template path not found: ${templatePath}`);
+		console.error(`Root path: ${rootPath}`);
+		console.error(`Available templates directory: ${join(rootPath, "templates")}`);
+		throw new Error(`Template directory ${templateInfo.path} not found at ${templatePath}`);
+	}
 
 	// Copy all files except node_modules and dist
 	await cp(templatePath, targetPath, {

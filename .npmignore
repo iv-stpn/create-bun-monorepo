@@ -1,0 +1,32 @@
+# Source files (we only want the built dist)
+src/
+
+# Development and testing files
+tests/
+playwright-report/
+playwright.config.ts
+test-*/
+*.log
+
+# Development configuration
+.changeset/
+biome.json
+tsconfig.json
+
+# CI/CD files
+.github/
+
+# Documentation (optional - you might want to keep README.md)
+docs/
+CHANGELOG.md
+RELEASE.md
+
+# Environment and OS files
+.env*
+.DS_Store
+
+# Node modules (always excluded by default, but good to be explicit)
+node_modules/
+
+# Build artifacts that shouldn't be in the package
+build/

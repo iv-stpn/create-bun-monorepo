@@ -54,6 +54,9 @@
 		"typescript": "^5"
 	},
 	"files": [
-		"dist"
+		"dist",
+		"templates",
+		"biome.json",
+		".vscode"
 	]
 }

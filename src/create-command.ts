@@ -491,7 +491,7 @@ async function createRootTsConfig(appName: string, apps: AppTemplate[], packages
 	const baseTsConfig = await readFile(baseTsConfigPath, "utf-8");
 	await writeFile(join(appName, "tsconfig.base.json"), baseTsConfig, { encoding: "utf-8" });
 
-	// Copy base tsconfig for apps
+	// Copy base tailwind config for frontend/mobile apps
 	if (apps.some((app) => app.category === "frontend" || app.template.includes("mobile"))) {
 		const baseTailwindConfigPath = join(rootPath, "templates", "tailwind.base.js");
 		const baseTailwindConfig = await readFile(baseTailwindConfigPath, "utf-8");
