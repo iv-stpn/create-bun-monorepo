@@ -10,7 +10,7 @@
 		"lint": "eslint . --ext .js,.jsx,.ts,.tsx",
 		"start": "react-native start",
 		"test": "jest",
-		"build": "echo 'React Native projects bundle at runtime. Use react-native run-android/ios to build and run.'",
+		"build": "echo 'React Native projects bundle at runtime. Use react-native run-android/ios to build and run. Initiating web build instead...' && bun web:build",
 		"typecheck": "tsc --noEmit --pretty"
 	},
 	"dependencies": {
@@ -34,14 +34,16 @@
 		"@types/react-native": "latest",
 		"@types/react-test-renderer": "^19",
 		"babel-jest": "^30",
+		"babel-loader": "^9",
+		"html-webpack-plugin": "^5",
 		"metro-react-native-babel-preset": "^0.77",
+		"nativewind": "^4",
 		"react-test-renderer": "^19",
+		"tailwindcss": "^3",
 		"typescript": "^5",
 		"webpack": "^5",
 		"webpack-cli": "^5",
-		"webpack-dev-server": "^5",
-		"babel-loader": "^9",
-		"html-webpack-plugin": "^5"
+		"webpack-dev-server": "^5"
 	},
 	"engines": {
 		"node": ">=20"

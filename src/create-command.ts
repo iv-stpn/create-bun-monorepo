@@ -492,9 +492,11 @@ async function createRootTsConfig(appName: string, apps: AppTemplate[], packages
 	await writeFile(join(appName, "tsconfig.base.json"), baseTsConfig, { encoding: "utf-8" });
 
 	// Copy base tsconfig for apps
-	const baseTailwindConfigPath = join(rootPath, "templates", "tailwind.base.js");
-	const baseTailwindConfig = await readFile(baseTailwindConfigPath, "utf-8");
-	await writeFile(join(appName, "tailwind.base.js"), baseTailwindConfig, { encoding: "utf-8" });
+	if (apps.some((app) => app.category === "frontend" || app.template.includes("mobile"))) {
+		const baseTailwindConfigPath = join(rootPath, "templates", "tailwind.base.js");
+		const baseTailwindConfig = await readFile(baseTailwindConfigPath, "utf-8");
+		await writeFile(join(appName, "tailwind.base.js"), baseTailwindConfig, { encoding: "utf-8" });
+	}
 }
 
 async function createLintingConfig(

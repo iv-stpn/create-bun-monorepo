@@ -1,9 +1,13 @@
+const { theme } = require("../../tailwind.base");
+
 /** @type {import('tailwindcss').Config} */
 module.exports = {
 	content: ["./src/**/*.{js,ts,jsx,tsx,mdx}"],
 	theme: {
 		extend: {
+			...theme.extend,
 			colors: {
+				...theme.extend.colors,
 				border: "hsl(var(--border))",
 				input: "hsl(var(--input))",
 				ring: "hsl(var(--ring))",

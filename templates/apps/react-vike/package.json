@@ -1,0 +1,25 @@
+{
+	"name": "@create-bun-monorepo/react-vike",
+	"scripts": {
+		"dev": "vike dev",
+		"build": "vike build",
+		"preview": "vike preview"
+	},
+	"dependencies": {
+		"@vitejs/plugin-react": "^4.7.0",
+		"react": "^19",
+		"react-dom": "^19",
+		"vike": "^0.4",
+		"vike-react": "^0.6"
+	},
+	"devDependencies": {
+		"@types/react": "^19",
+		"@types/react-dom": "^19",
+		"autoprefixer": "^10",
+		"postcss": "^8",
+		"tailwindcss": "^3",
+		"typescript": "^5",
+		"vite": "^5"
+	},
+	"type": "module"
+}
