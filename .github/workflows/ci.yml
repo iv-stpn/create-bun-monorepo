@@ -1,0 +1,180 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  # Also run on pushes to feature branches
+  push:
+    branches-ignore: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check-changes:
+    name: Check Changes
+    runs-on: ubuntu-latest
+    outputs:
+      should-lint: ${{ steps.check-changes.outputs.lint-files }}
+      should-e2e: ${{ steps.check-changes.outputs.e2e-files }}
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Check file changes
+        id: check-changes
+        uses: dorny/paths-filter@v2
+        with:
+          filters: |
+            lint-files:
+              - 'src/**/*.{js,ts,jsx,tsx}'
+              - 'templates/**/*.{js,ts,jsx,tsx}'
+              - 'tests/**/*.{js,ts,jsx,tsx}'
+              - 'package.json'
+              - 'biome.json'
+              - 'tsconfig.json'
+            e2e-files:
+              - 'playwright.config.ts'
+              - 'tests/test-runner.sh'
+              - 'templates/**'
+              - 'tests/**'
+              - 'src/**'
+
+  lint-typecheck:
+    name: Lint & Typecheck
+    needs: check-changes
+    if: needs.check-changes.outputs.should-lint == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+      
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: bun-${{ runner.os }}-${{ hashFiles('**/bun.lockb') }}
+          restore-keys: |
+            bun-${{ runner.os }}-
+      
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      
+      - name: Install template dependencies
+        run: bun install --cwd=templates --frozen-lockfile
+      
+      - name: Lint
+        run: bun run lint
+      
+      - name: Typecheck
+        run: bun run typecheck
+      
+      - name: Build
+        run: bun run build
+
+  comprehensive-tests:
+    name: Comprehensive Tests  
+    needs: check-changes
+    if: needs.check-changes.outputs.should-e2e == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+      
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: bun-${{ runner.os }}-${{ hashFiles('**/bun.lockb') }}
+          restore-keys: |
+            bun-${{ runner.os }}-
+      
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      
+      - name: Install template dependencies
+        run: bun install --cwd=templates --frozen-lockfile
+      
+      - name: Build CLI
+        run: bun run build
+      
+      - name: Make test scripts executable
+        run: chmod +x tests/test-runner.sh
+      
+      - name: Run comprehensive test suite
+        run: |
+          echo "Running comprehensive test suite..."
+          # This includes:
+          # - Project creation (12 scenarios)
+          # - Dependency installation & building
+          # - Linting & typechecking
+          # - ORM setup & migrations  
+          # - E2E dev server testing
+          ./tests/test-runner.sh --mode=full
+        env:
+          CI: true
+      
+      - name: Upload test artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-artifacts
+          path: |
+            /tmp/create-bun-monorepo/
+            /tmp/*.log
+          retention-days: 3
+
+  ci-summary:
+    name: CI Summary
+    needs: [check-changes, lint-typecheck, comprehensive-tests]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Generate summary
+        run: |
+          echo "## 🚀 CI Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Check what ran
+          lint_ran="${{ needs.check-changes.outputs.should-lint == 'true' }}"
+          comprehensive_ran="${{ needs.check-changes.outputs.should-e2e == 'true' }}"
+          
+          if [[ "$lint_ran" == "false" && "$comprehensive_ran" == "false" ]]; then
+            echo "⏭️ All tests skipped - no relevant files changed" >> $GITHUB_STEP_SUMMARY
+          else
+            if [[ "$lint_ran" == "true" ]]; then
+              echo "**Lint & Typecheck:** ${{ needs.lint-typecheck.result == 'success' && '✅ Passed' || needs.lint-typecheck.result == 'skipped' && '⏭️ Skipped' || '❌ Failed' }}" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "**Lint & Typecheck:** ⏭️ Skipped (no JS/TS/config changes)" >> $GITHUB_STEP_SUMMARY
+            fi
+            
+            if [[ "$comprehensive_ran" == "true" ]]; then
+              echo "**Comprehensive Tests:** ${{ needs.comprehensive-tests.result == 'success' && '✅ Passed' || needs.comprehensive-tests.result == 'skipped' && '⏭️ Skipped' || '❌ Failed' }}" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "**Comprehensive Tests:** ⏭️ Skipped (no template/test/core changes)" >> $GITHUB_STEP_SUMMARY
+            fi
+            
+            echo "" >> $GITHUB_STEP_SUMMARY
+            
+            # Overall status
+            if [[ ("$lint_ran" == "false" || "${{ needs.lint-typecheck.result }}" == "success") && ("$comprehensive_ran" == "false" || "${{ needs.comprehensive-tests.result }}" == "success") ]]; then
+              echo "🎉 All relevant checks passed! Ready for review." >> $GITHUB_STEP_SUMMARY
+            else
+              echo "❌ Some checks failed. Please review the logs above." >> $GITHUB_STEP_SUMMARY
+            fi
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Smart Testing:**" >> $GITHUB_STEP_SUMMARY
+          echo "- Lint/Typecheck runs when JS/TS files or configs change" >> $GITHUB_STEP_SUMMARY
+          echo "- Comprehensive tests run when templates, tests, or core code changes" >> $GITHUB_STEP_SUMMARY
+          echo "- Includes: project creation, dependency install, lint, typecheck, ORM setup, builds, and E2E dev server testing" >> $GITHUB_STEP_SUMMARY
