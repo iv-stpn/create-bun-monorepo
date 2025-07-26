@@ -1,5 +1,11 @@
 # create-bun-monorepo
 
+## 1.1.1
+
+### Patch Changes
+
+- [`53ae9cc`](https://github.com/iv-stpn/create-bun-monorepo/commit/53ae9cc2686635a02eb380d3b87a1c0fd9726c51) Thanks [@iv-stpn](https://github.com/iv-stpn)! - Minor fixes.
+
 ## 1.1.0
 
 ### Minor Changes
