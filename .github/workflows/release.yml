@@ -96,7 +96,6 @@ jobs:
         echo "**Validations Performed:**" >> $GITHUB_STEP_SUMMARY
         echo "- Code quality (TypeScript, linting, building)" >> $GITHUB_STEP_SUMMARY
         echo "- ORM schema generation & migration" >> $GITHUB_STEP_SUMMARY
-        echo "- Early exit on any failure" >> $GITHUB_STEP_SUMMARY
 
     - name: Test failure summary
       if: failure()

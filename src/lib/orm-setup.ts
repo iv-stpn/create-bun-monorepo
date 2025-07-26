@@ -350,8 +350,8 @@ export function getDrizzleConfigContent(database: "postgresql" | "mysql" | "sqli
 	return `import type { Config } from "drizzle-kit";
 
 export default {
-	schema: "./src/schema.ts",
-	out: "./drizzle",
+	schema: "./packages/db/src/schema.ts",
+	out: "./packages/db/drizzle",
 	dialect: "${dialect}",
 	dbCredentials: {
 		${database === "sqlite" ? 'url: process.env.DATABASE_URL || "./local.db",' : "url: process.env.DATABASE_URL!,"}
