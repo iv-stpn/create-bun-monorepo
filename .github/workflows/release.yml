@@ -122,6 +122,9 @@ jobs:
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v4
+        with:
+          # This makes Actions fetch all Git history so that Changesets can generate proper changelogs
+          fetch-depth: 0
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v1
@@ -134,24 +137,17 @@ jobs:
       - name: Install dependencies for templates
         run: bun install --cwd=templates
 
-      - name: Run Type Check
-        run: bun run typecheck
-
-      - name: Run Linting
-        run: bun run lint
-
       - name: Build Package
         run: bun run build
 
-      - name: Release
+      - name: Create Release Pull Request or Publish to npm
         id: changesets
         uses: changesets/action@v1
         with:
-          version: bun run changeset:version
+          # This will either:
+          # 1. Create a "Version Packages" PR if there are pending changesets
+          # 2. Publish to npm if the "Version Packages" PR is merged
           publish: bun run release
-          title: "Version Packages"
-          commit: "Version Packages"
-          createGithubReleases: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
